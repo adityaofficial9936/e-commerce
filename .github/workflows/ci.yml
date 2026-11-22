@@ -1,0 +1,103 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-test:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ecommerce
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: ecommerce_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9.12.3
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: |
+          cd apps/api
+          npx prisma generate
+
+      - name: Build Shared Contracts
+        run: pnpm --filter=@ecommerce/contracts build
+
+      - name: Typecheck Monorepo
+        run: |
+          pnpm --filter=@ecommerce/contracts tsc --noEmit
+          pnpm --filter=@ecommerce/ui tsc --noEmit
+          pnpm --filter=api tsc --noEmit
+
+      - name: Run Backend Unit & Integration Tests
+        run: |
+          cd apps/api
+          ./node_modules/.bin/jest --ci --coverage --maxWorkers=2
+
+      - name: Build Storefront (Next.js)
+        run: |
+          pnpm --filter=web build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Build Admin Console (Next.js)
+        run: |
+          pnpm --filter=admin build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1

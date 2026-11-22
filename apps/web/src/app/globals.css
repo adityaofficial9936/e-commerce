@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 28, 27, 26; /* Charcoal #1C1B1A */
+  --background-rgb: 250, 247, 242; /* Ivory #FAF7F2 */
+  --color-ivory: #FAF7F2;
+  --color-blush: #F3DDD6;
+  --color-champagne: #C9A66B;
+  --color-charcoal: #1C1B1A;
+  --color-rose: #D88C9A;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hairline Gold Border */
+.border-hairline {
+  border-width: 1px;
+  border-color: rgba(201, 166, 107, 0.25);
+}
+
+.border-hairline-subtle {
+  border-width: 1px;
+  border-color: rgba(28, 27, 26, 0.08);
+}
+
+/* Custom Scrollbar for Luxury Look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF7F2;
+}
+::-webkit-scrollbar-thumb {
+  background: #E2CA9B;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C9A66B;
+}
