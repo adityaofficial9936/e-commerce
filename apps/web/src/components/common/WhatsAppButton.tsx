@@ -9,7 +9,7 @@ interface WhatsAppButtonProps {
 }
 
 export function WhatsAppButton({
-  phoneNumber = '919876543210',
+  phoneNumber = '917309936559',
   defaultMessage = 'Hello Moonlet Concierge! I need styling advice / order support.',
 }: WhatsAppButtonProps) {
   const [isOpen, setIsOpen] = useState(false);

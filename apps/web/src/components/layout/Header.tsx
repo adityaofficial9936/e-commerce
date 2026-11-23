@@ -232,7 +232,7 @@ export function Header() {
                           </Link>
 
                           <a
-                            href="https://wa.me/919876543210?text=Hi%20Moonlet%2C%20I%20need%20styling%20advice%20or%20support%20with%20my%20order."
+                            href="https://wa.me/917309936559?text=Hi%20Moonlet%2C%20I%20need%20styling%20advice%20or%20support%20with%20my%20order."
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => setProfileDropdownOpen(false)}
@@ -301,7 +301,7 @@ export function Header() {
                         </Link>
 
                         <a
-                          href="https://wa.me/919876543210?text=Hi%20Moonlet%2C%20I%20have%20an%20inquiry%20about%20your%20jewelry%20collections."
+                          href="https://wa.me/917309936559?text=Hi%20Moonlet%2C%20I%20have%20an%20inquiry%20about%20your%20jewelry%20collections."
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={() => setProfileDropdownOpen(false)}

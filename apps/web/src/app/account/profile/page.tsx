@@ -182,7 +182,7 @@ export default function CustomerProfilePage() {
               </Link>
 
               <a
-                href="https://wa.me/919876543210?text=Hi%20Moonlet%20Concierge%2C%20I%20need%20support%20with%20my%20profile%20or%20orders."
+                href="https://wa.me/917309936559?text=Hi%20Moonlet%20Concierge%2C%20I%20need%20support%20with%20my%20profile%20or%20orders."
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-emerald-50 text-emerald-700 transition-colors"

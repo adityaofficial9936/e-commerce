@@ -92,7 +92,7 @@ export function Footer() {
             <li><Link href="/products?topic=returns" className="hover:text-champagne transition-colors">7-Day Return / Exchange</Link></li>
             <li><Link href="/account/orders" className="hover:text-champagne transition-colors">Track Your Order</Link></li>
             <li><Link href="/products?topic=faq" className="hover:text-champagne transition-colors">Frequently Asked Questions</Link></li>
-            <li><a href="https://wa.me/919999999999" target="_blank" rel="noopener noreferrer" className="hover:text-champagne transition-colors flex items-center gap-1 text-emerald-400"><span>WhatsApp Support</span></a></li>
+            <li><a href="https://wa.me/917309936559?text=Hi%20Moonlet%20Support%2C%20I%20need%20help%20with%20an%20order." target="_blank" rel="noopener noreferrer" className="hover:text-champagne transition-colors flex items-center gap-1 text-emerald-400"><span>WhatsApp Support (+91 73099 36559)</span></a></li>
           </ul>
         </div>
 
