@@ -464,13 +464,22 @@ function CatalogContent() {
     openCart();
   };
 
+  const normalizeCategory = (catStr: string): string => {
+    const lower = (catStr || '').toLowerCase().trim();
+    if (lower.startsWith('earring')) return 'Earrings';
+    if (lower.startsWith('neck')) return 'Necklaces';
+    if (lower.startsWith('watch')) return 'Watches';
+    if (lower.startsWith('ring')) return 'Rings';
+    if (lower.startsWith('brac')) return 'Bracelets';
+    return catStr;
+  };
+
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat) {
-      const match = ['All', 'Earrings', 'Necklaces', 'Watches', 'Rings', 'Bracelets'].find(
-        (c) => c.toLowerCase() === cat.toLowerCase()
-      );
-      if (match) setSelectedCategory(match);
+      setSelectedCategory(normalizeCategory(cat));
+    } else {
+      setSelectedCategory('All');
     }
     const q = searchParams.get('q');
     if (q) {
@@ -482,7 +491,9 @@ function CatalogContent() {
   const finishes = ['All', '18k Gold-Tone', 'Rose Gold', 'Stainless Steel'];
 
   const filtered = products.filter((p) => {
-    if (selectedCategory !== 'All' && p.category.toLowerCase() !== selectedCategory.toLowerCase()) return false;
+    if (selectedCategory !== 'All' && normalizeCategory(p.category) !== normalizeCategory(selectedCategory)) {
+      return false;
+    }
     if (selectedFinish !== 'All' && p.finish.toLowerCase() !== selectedFinish.toLowerCase()) return false;
     if (p.priceMinor > maxPriceRupees * 100) return false;
     if (inStockOnly && !p.inStock) return false;

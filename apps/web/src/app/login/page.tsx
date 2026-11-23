@@ -28,13 +28,12 @@ export default function CustomerLoginPage() {
   const [activeTab, setActiveTab] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [authMode, setAuthMode] = useState<'PASSWORD' | 'OTP'>('PASSWORD');
   
-  // Login states
-  const [email, setEmail] = useState('aditya@moonlet.in');
+  // Login states - Supports either Mobile Phone OR Email
+  const [loginIdentifier, setLoginIdentifier] = useState('9936706276');
   const [password, setPassword] = useState('Moonlet@2026!');
   const [showPassword, setShowPassword] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
-  const [phone, setPhone] = useState('+91 9876543210');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
 
@@ -45,6 +44,8 @@ export default function CustomerLoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [joinClub, setJoinClub] = useState(true);
+  const [regStep, setRegStep] = useState<'FORM' | 'VERIFY'>('FORM');
+  const [regOtp, setRegOtp] = useState('');
   const [regError, setRegError] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,11 +56,18 @@ export default function CustomerLoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const isEmail = loginIdentifier.includes('@');
+    const cleanPhone = loginIdentifier.startsWith('+91')
+      ? loginIdentifier
+      : `+91 ${loginIdentifier.replace(/\D/g, '')}`;
+
     try {
-      const res = await apiClient.post<{ accessToken: string }>('/auth/login', {
-        email,
-        password,
-      }).catch(() => null);
+      const res = await apiClient
+        .post<{ accessToken: string }>('/auth/login', {
+          email: isEmail ? loginIdentifier : 'customer@moonlet.in',
+          password,
+        })
+        .catch(() => null);
 
       if (res?.data?.accessToken) {
         localStorage.setItem('moonlet_customer_token', res.data.accessToken);
@@ -69,13 +77,22 @@ export default function CustomerLoginPage() {
       // Fallback
     }
 
-    setSuccessMessage('Signed in successfully! Redirecting to orders...');
+    setSuccessMessage('Signed in successfully! Redirecting...');
     setSuccess(true);
     setTimeout(() => {
-      localStorage.setItem(
-        'moonlet_customer_auth',
-        JSON.stringify({ email, name: email.split('@')[0] || 'Aditya Yadav' })
-      );
+      const authObj = isEmail
+        ? {
+            email: loginIdentifier.trim(),
+            phone: '+91 99367 06276',
+            name: loginIdentifier.split('@')[0] || 'Aditya Yadav',
+          }
+        : {
+            phone: cleanPhone,
+            email: 'aditya@moonlet.in',
+            name: 'Aditya Yadav',
+          };
+
+      localStorage.setItem('moonlet_customer_auth', JSON.stringify(authObj));
       router.push('/account/orders');
     }, 600);
   };
@@ -84,7 +101,7 @@ export default function CustomerLoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await apiClient.post('/auth/otp/send', { phone }).catch(() => null);
+      await apiClient.post('/auth/otp/send', { phone: loginIdentifier }).catch(() => null);
     } catch {
       // Demo fallback
     }
@@ -95,18 +112,32 @@ export default function CustomerLoginPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setSuccessMessage('Phone verified! Signing you in...');
+    setSuccessMessage('Credentials verified! Signing you in...');
     setSuccess(true);
     setTimeout(() => {
-      localStorage.setItem(
-        'moonlet_customer_auth',
-        JSON.stringify({ phone, name: 'Verified Customer' })
-      );
+      const isEmail = loginIdentifier.includes('@');
+      const cleanPhone = loginIdentifier.startsWith('+91')
+        ? loginIdentifier
+        : `+91 ${loginIdentifier.replace(/\D/g, '')}`;
+
+      const authObj = isEmail
+        ? {
+            email: loginIdentifier.trim(),
+            phone: '+91 99367 06276',
+            name: loginIdentifier.split('@')[0] || 'Aditya Yadav',
+          }
+        : {
+            phone: cleanPhone,
+            email: 'aditya@moonlet.in',
+            name: 'Aditya Yadav',
+          };
+
+      localStorage.setItem('moonlet_customer_auth', JSON.stringify(authObj));
       router.push('/account/orders');
     }, 600);
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleStartRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setRegError('');
 
@@ -118,28 +149,44 @@ export default function CustomerLoginPage() {
       setRegError('Password must be at least 6 characters.');
       return;
     }
-
-    setIsSubmitting(true);
-
-    try {
-      // Attempt backend register
-      await apiClient.post('/auth/register', {
-        name: regName,
-        email: regEmail,
-        phone: regPhone,
-        password: regPassword,
-      }).catch(() => null);
-    } catch {
-      // local demo
+    if (!regPhone.trim()) {
+      setRegError('Mobile phone number is required for verification.');
+      return;
     }
 
-    setSuccessMessage('Account created! Welcome to Moonlet VIP Club.');
+    // Move to dual verification step
+    setRegStep('VERIFY');
+  };
+
+  const handleCompleteRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const cleanPhone = regPhone.startsWith('+91')
+      ? regPhone.trim()
+      : `+91 ${regPhone.replace(/\D/g, '')}`;
+
+    try {
+      await apiClient
+        .post('/auth/register', {
+          name: regName,
+          email: regEmail,
+          phone: cleanPhone,
+          password: regPassword,
+        })
+        .catch(() => null);
+    } catch {}
+
+    setSuccessMessage('Both Email & Mobile verified successfully! Welcome to Moonlet.');
     setSuccess(true);
+
     setTimeout(() => {
       const customerRecord = {
-        name: regName || 'Moonlet Member',
-        email: regEmail,
-        phone: regPhone || '+91 98765 00000',
+        name: regName.trim() || 'Moonlet Member',
+        email: regEmail.trim(),
+        phone: cleanPhone,
+        isEmailVerified: true,
+        isPhoneVerified: true,
         vip: joinClub,
         welcomeRewardApplied: true,
       };
@@ -154,7 +201,7 @@ export default function CustomerLoginPage() {
           id: `cust-${Date.now()}`,
           name: regName.trim() || 'New Customer',
           email: regEmail.trim(),
-          phone: regPhone.trim() || '+91 98765 00000',
+          phone: cleanPhone,
           segment: joinClub ? 'VIP' : 'Regular',
           ordersCount: 0,
           totalSpentMinor: 0,
@@ -174,7 +221,7 @@ export default function CustomerLoginPage() {
   };
 
   const quickDemoLogin = (demoEmail: string, demoName: string) => {
-    setEmail(demoEmail);
+    setLoginIdentifier(demoEmail);
     setPassword('Moonlet@2026!');
     setIsSubmitting(true);
     setSuccessMessage(`Welcome back, ${demoName}! Redirecting...`);
@@ -306,15 +353,15 @@ export default function CustomerLoginPage() {
                 <form onSubmit={handlePasswordLogin} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-charcoal/80 mb-1.5">
-                      Email Address
+                      Mobile Number or Email Address
                     </label>
                     <div className="relative">
                       <input
-                        type="email"
+                        type="text"
                         required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email"
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder="e.g. 9936706276 or aditya@moonlet.in"
                         className="w-full px-4 py-3 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
                       />
                     </div>
@@ -392,15 +439,15 @@ export default function CustomerLoginPage() {
                     <form onSubmit={handleSendOtp} className="space-y-4">
                       <div>
                         <label className="block text-xs font-medium text-charcoal/80 mb-1.5">
-                          Indian Mobile Phone Number
+                          Mobile Number or Email Address
                         </label>
                         <div className="relative">
                           <input
-                            type="tel"
+                            type="text"
                             required
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="+91 9876543210"
+                            value={loginIdentifier}
+                            onChange={(e) => setLoginIdentifier(e.target.value)}
+                            placeholder="e.g. 9936706276 or aditya@moonlet.in"
                             className="w-full px-4 py-3 bg-ivory/50 border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
                           />
                         </div>
@@ -412,11 +459,11 @@ export default function CustomerLoginPage() {
                       >
                         {isSubmitting ? (
                           <TextShimmerWave duration={1} className="font-medium text-xs text-ivory">
-                            Dispatching 6-Digit OTP...
+                            Dispatching Verification Code...
                           </TextShimmerWave>
                         ) : (
                           <>
-                            <span>Send 6-Digit OTP</span>
+                            <span>Send Verification Code</span>
                             <ArrowRight className="h-4 w-4" />
                           </>
                         )}
@@ -426,7 +473,7 @@ export default function CustomerLoginPage() {
                     <form onSubmit={handleVerifyOtp} className="space-y-4">
                       <div>
                         <label className="block text-xs font-medium text-charcoal/80 mb-1.5">
-                          Enter 6-Digit Verification Code
+                          Enter Verification Code
                         </label>
                         <input
                           type="text"
@@ -434,11 +481,11 @@ export default function CustomerLoginPage() {
                           required
                           value={otp}
                           onChange={(e) => setOtp(e.target.value)}
-                          placeholder="123456"
+                          placeholder="1234"
                           className="w-full py-3 bg-ivory/50 border border-champagne/30 rounded-xl text-base font-mono font-bold tracking-widest text-charcoal focus:outline-none focus:border-champagne text-center"
                         />
                         <p className="text-[11px] text-charcoal/50 mt-1 text-center">
-                          Sent to {phone}. Demo verification code: <strong className="text-charcoal font-mono">123456</strong>
+                          Sent to {loginIdentifier}. Demo passcode: <strong className="text-charcoal font-mono">1234</strong>
                         </p>
                       </div>
                       <button
@@ -470,18 +517,44 @@ export default function CustomerLoginPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => quickDemoLogin('aditya@moonlet.in', 'Aditya Yadav')}
-                    className="p-2.5 rounded-xl border border-champagne/30 bg-ivory/40 hover:bg-blush/20 text-left transition-all text-[11px]"
+                    onClick={() => {
+                      setLoginIdentifier('9936706276');
+                      setPassword('Moonlet@2026!');
+                      setIsSubmitting(true);
+                      setSuccessMessage('Welcome back, Aditya Yadav! Redirecting...');
+                      setSuccess(true);
+                      setTimeout(() => {
+                        localStorage.setItem(
+                          'moonlet_customer_auth',
+                          JSON.stringify({ phone: '+91 99367 06276', name: 'Aditya Yadav', email: 'aditya@moonlet.in' })
+                        );
+                        router.push('/account/orders');
+                      }, 500);
+                    }}
+                    className="p-2.5 rounded-xl border border-champagne/30 bg-ivory/40 hover:bg-blush/20 text-left transition-all text-[11px] cursor-pointer"
                   >
-                    <p className="font-medium text-charcoal">Aditya Yadav</p>
-                    <p className="text-[10px] text-charcoal/50 truncate">aditya@moonlet.in</p>
+                    <p className="font-medium text-charcoal">Aditya Yadav (Mobile)</p>
+                    <p className="text-[10px] text-charcoal/50 truncate">+91 99367 06276</p>
                   </button>
                   <button
                     type="button"
-                    onClick={() => quickDemoLogin('priya@moonlet.in', 'Priya Sharma')}
-                    className="p-2.5 rounded-xl border border-champagne/30 bg-ivory/40 hover:bg-blush/20 text-left transition-all text-[11px]"
+                    onClick={() => {
+                      setLoginIdentifier('priya@moonlet.in');
+                      setPassword('Moonlet@2026!');
+                      setIsSubmitting(true);
+                      setSuccessMessage('Welcome back, Priya Sharma! Redirecting...');
+                      setSuccess(true);
+                      setTimeout(() => {
+                        localStorage.setItem(
+                          'moonlet_customer_auth',
+                          JSON.stringify({ email: 'priya@moonlet.in', name: 'Priya Sharma', phone: '+91 98765 43210' })
+                        );
+                        router.push('/account/orders');
+                      }, 500);
+                    }}
+                    className="p-2.5 rounded-xl border border-champagne/30 bg-ivory/40 hover:bg-blush/20 text-left transition-all text-[11px] cursor-pointer"
                   >
-                    <p className="font-medium text-charcoal">Priya Sharma</p>
+                    <p className="font-medium text-charcoal">Priya Sharma (Email)</p>
                     <p className="text-[10px] text-charcoal/50 truncate">priya@moonlet.in</p>
                   </button>
                 </div>
@@ -491,125 +564,181 @@ export default function CustomerLoginPage() {
 
           {/* TAB 2: CREATE CUSTOMER ACCOUNT */}
           {activeTab === 'REGISTER' && (
-            <form onSubmit={handleRegister} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-medium text-charcoal/80 mb-1">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={regName}
-                  onChange={(e) => setRegName(e.target.value)}
-                  placeholder="e.g. Priya Sharma"
-                  className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/80 mb-1">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="priya@example.com"
-                    className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
-                  />
+            <>
+              {regError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
+                  {regError}
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/80 mb-1">
-                    Mobile (for Delivery SMS)
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
-                  />
-                </div>
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/80 mb-1">
-                    Choose Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={regPassword}
-                    onFocus={() => setIsPasswordFocused(true)}
-                    onBlur={() => setIsPasswordFocused(false)}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="Min 6 characters"
-                    className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-charcoal/80 mb-1">
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={regConfirmPassword}
-                    onFocus={() => setIsPasswordFocused(true)}
-                    onBlur={() => setIsPasswordFocused(false)}
-                    onChange={(e) => setRegConfirmPassword(e.target.value)}
-                    placeholder="Re-enter password"
-                    className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
-                  />
-                </div>
-              </div>
+              {regStep === 'FORM' ? (
+                <form onSubmit={handleStartRegister} className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-medium text-charcoal/80 mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      placeholder="e.g. Aditya Yadav"
+                      className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
+                    />
+                  </div>
 
-              <div className="p-3 bg-blush/20 rounded-xl border border-champagne/20">
-                <label className="flex items-start gap-2.5 text-xs text-charcoal cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={joinClub}
-                    onChange={(e) => setJoinClub(e.target.checked)}
-                    className="mt-0.5 rounded text-charcoal border-champagne/30 focus:ring-0 cursor-pointer accent-charcoal"
-                  />
-                  <span>
-                    Enroll in <strong>Moonlet VIP Circle</strong> (exclusive drops, birthday gifts &amp; early sale access).
-                  </span>
-                </label>
-              </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/80 mb-1">
+                        Email Address (for Verification)
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="aditya@example.com"
+                        className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/80 mb-1">
+                        Mobile Phone (10 Digits)
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={regPhone}
+                        onChange={(e) => setRegPhone(e.target.value)}
+                        placeholder="9936706276"
+                        className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
+                      />
+                    </div>
+                  </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 bg-charcoal hover:bg-champagne hover:text-charcoal text-ivory font-medium text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75 mt-2"
-              >
-                {isSubmitting ? (
-                  <TextShimmerWave duration={1} className="font-medium text-xs text-ivory">
-                    Creating your Moonlet account...
-                  </TextShimmerWave>
-                ) : (
-                  <>
-                    <span>Create Moonlet Account</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/80 mb-1">
+                        Choose Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={regPassword}
+                        onFocus={() => setIsPasswordFocused(true)}
+                        onBlur={() => setIsPasswordFocused(false)}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Min 6 characters"
+                        className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-charcoal/80 mb-1">
+                        Confirm Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        value={regConfirmPassword}
+                        onFocus={() => setIsPasswordFocused(true)}
+                        onBlur={() => setIsPasswordFocused(false)}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="Re-enter password"
+                        className="w-full px-4 py-2.5 bg-ivory/50 hover:bg-ivory focus:bg-white border border-champagne/30 rounded-xl text-xs text-charcoal font-medium transition-all focus:outline-none focus:border-champagne"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-blush/20 rounded-xl border border-champagne/20">
+                    <label className="flex items-start gap-2.5 text-xs text-charcoal cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={joinClub}
+                        onChange={(e) => setJoinClub(e.target.checked)}
+                        className="mt-0.5 rounded text-charcoal border-champagne/30 focus:ring-0 cursor-pointer accent-charcoal"
+                      />
+                      <span>
+                        Enroll in <strong>Moonlet VIP Circle</strong> (exclusive drops, birthday gifts &amp; early sale access).
+                      </span>
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-3.5 bg-charcoal hover:bg-champagne hover:text-charcoal text-ivory font-medium text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  >
+                    <span>Proceed to Verification</span>
                     <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </button>
+                  </button>
 
-              <p className="text-[11px] text-center text-charcoal/60 pt-1">
-                Already registered?{' '}
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('LOGIN')}
-                  className="font-semibold text-champagne hover:underline"
-                >
-                  Sign in here
-                </button>
-              </p>
-            </form>
+                  <p className="text-[11px] text-center text-charcoal/60 pt-1">
+                    Already registered?{' '}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('LOGIN')}
+                      className="font-semibold text-champagne hover:underline"
+                    >
+                      Sign in here
+                    </button>
+                  </p>
+                </form>
+              ) : (
+                <form onSubmit={handleCompleteRegistration} className="space-y-4">
+                  <div className="text-center space-y-1">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-champagne/20 text-charcoal text-[11px] font-semibold">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                      Dual Verification Code
+                    </div>
+                    <h3 className="text-sm font-semibold text-charcoal">Verify Mobile &amp; Email</h3>
+                    <p className="text-[11px] text-charcoal/60">
+                      A 4-digit verification code has been dispatched to{' '}
+                      <strong className="text-charcoal">{regPhone}</strong> and{' '}
+                      <strong className="text-charcoal">{regEmail}</strong>.
+                    </p>
+                  </div>
+
+                  <div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      required
+                      value={regOtp}
+                      onChange={(e) => setRegOtp(e.target.value)}
+                      placeholder="1234"
+                      className="w-full py-3 bg-ivory/50 border border-champagne/30 rounded-xl text-base font-mono font-bold tracking-widest text-charcoal focus:outline-none focus:border-champagne text-center"
+                    />
+                    <p className="text-[11px] text-charcoal/50 mt-1 text-center">
+                      Instant demo verification passcode: <strong className="text-charcoal font-mono">1234</strong>
+                    </p>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-3.5 bg-charcoal hover:bg-champagne hover:text-charcoal text-ivory font-medium text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
+                  >
+                    {isSubmitting ? (
+                      <TextShimmerWave duration={1} className="font-medium text-xs text-ivory">
+                        Verifying &amp; creating account...
+                      </TextShimmerWave>
+                    ) : (
+                      <>
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>Verify &amp; Activate Account</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRegStep('FORM')}
+                    className="w-full text-center text-xs text-charcoal/60 hover:text-charcoal hover:underline"
+                  >
+                    &larr; Edit Name, Mobile or Email
+                  </button>
+                </form>
+              )}
+            </>
           )}
 
         </div>

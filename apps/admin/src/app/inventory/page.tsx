@@ -360,20 +360,31 @@ export default function InventoryPage() {
     e.preventDefault();
     setFormError(null);
 
-    if (!formName.trim() || !formSku.trim()) {
-      setFormError('Product title and SKU are required.');
+    if (!formName.trim()) {
+      setFormError('Product title is required.');
       return;
     }
 
-    const normalizedSku = formSku.trim().toUpperCase();
+    const catPrefix = formCategory.toUpperCase().slice(0, 4);
+    const normalizedSku = (formSku.trim() || `SKU-${catPrefix}-${Date.now().toString().slice(-4)}`).toUpperCase();
+
     if (items.some((i) => i.sku === normalizedSku)) {
       setFormError(`SKU ${normalizedSku} already exists.`);
       return;
     }
 
-    const price = parseFloat(formPriceDollars) || 100;
-    const qty = parseInt(formQuantity, 10) || 10;
+    const price = parseFloat(formPriceDollars) || 799;
+    const qty = parseInt(formQuantity, 10) || 25;
     const priceMinor = Math.round(price * 100);
+
+    const defaultImg =
+      formCategory.toLowerCase().includes('ring')
+        ? 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800'
+        : formCategory.toLowerCase().includes('watch')
+        ? 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800'
+        : formCategory.toLowerCase().includes('neck')
+        ? 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800'
+        : 'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=800';
 
     const finalImages: ProductImage[] =
       formImages.length > 0
@@ -381,7 +392,7 @@ export default function InventoryPage() {
         : [
             {
               id: `img-${Date.now()}`,
-              url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&auto=format&fit=crop&q=80',
+              url: urlInput.trim() || defaultImg,
               altText: formName,
               isPrimary: true,
             },
@@ -392,12 +403,12 @@ export default function InventoryPage() {
       sku: normalizedSku,
       name: formName.trim(),
       category: formCategory,
-      brand: formBrand,
+      brand: 'Moonlet',
       priceMinor,
       quantityOnHand: qty,
       reserved: 0,
       status: 'Active',
-      variant: formVariant,
+      variant: '18k Gold-Tone Edition',
       images: finalImages,
       monthlySales: [5, 10, 15, 20, 25, 30, 35],
     };
@@ -464,7 +475,7 @@ export default function InventoryPage() {
 
           <div>
             <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight block">
-              $1.9M
+              ₹19.5L
             </span>
             <span className="text-xs text-slate-400 font-medium">Inventory value</span>
           </div>
@@ -554,7 +565,7 @@ export default function InventoryPage() {
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-500">{prod.sku}</td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">{prod.quantityOnHand}</td>
                       <td className="py-3.5 px-4 text-right font-bold text-slate-900 tabular-nums">
-                        ${(prod.priceMinor / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        ₹{(prod.priceMinor / 100).toLocaleString('en-IN', { minimumFractionDigits: 0 })}
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -845,7 +856,7 @@ export default function InventoryPage() {
                 )}
               </div>
 
-              {/* Product Info */}
+              {/* Product Info - Only Essential Required Fields */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block font-bold text-slate-700 mb-1">Product Title *</label>
@@ -854,54 +865,43 @@ export default function InventoryPage() {
                     required
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    placeholder="e.g. Stihl TS 800 cut-off machine"
+                    placeholder="e.g. Celestial Diamond Star Earrings"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">SKU *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formSku}
-                    onChange={(e) => setFormSku(e.target.value)}
-                    placeholder="e.g. DEF-456-BLU"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono uppercase"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Category</label>
+                  <label className="block font-bold text-slate-700 mb-1">Category *</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                   >
                     <option value="Earrings">Earrings</option>
-                    <option value="Necklaces">Necklaces</option>
-                    <option value="Watches">Watches</option>
+                    <option value="Necklace">Necklace</option>
+                    <option value="Watch">Watch</option>
                     <option value="Rings">Rings</option>
-                    <option value="Bracelets">Bracelets</option>
-                    <option value="Gift Sets">Gift Sets</option>
                   </select>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Price (₹) *</label>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     required
                     value={formPriceDollars}
                     onChange={(e) => setFormPriceDollars(e.target.value)}
+                    placeholder="799"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Stock Quantity</label>
+                <div className="col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">Stock Quantity *</label>
                   <input
                     type="number"
                     required
                     value={formQuantity}
                     onChange={(e) => setFormQuantity(e.target.value)}
+                    placeholder="25"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                   />
                 </div>

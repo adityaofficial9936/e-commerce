@@ -1,21 +1,72 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, Search, User, Menu, X, Heart, Sparkles } from 'lucide-react';
+import {
+  ShoppingBag,
+  Search,
+  User,
+  Menu,
+  X,
+  Heart,
+  Sparkles,
+  Package,
+  Settings,
+  LogOut,
+  MessageCircle,
+  ChevronDown,
+} from 'lucide-react';
 import { useCartStore, useCartSummary } from '../../store/cart';
 import { useWishlistStore } from '../../store/wishlist';
+
+interface CustomerAuth {
+  name?: string;
+  email?: string;
+  phone?: string;
+  vip?: boolean;
+}
 
 export function Header() {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [customerAuth, setCustomerAuth] = useState<CustomerAuth | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
   const openCart = useCartStore((s) => s.openCart);
   const { itemCount } = useCartSummary();
   const wishlistItems = useWishlistStore((s) => s.items);
   const wishlistCount = wishlistItems.length;
+
+  useEffect(() => {
+    // Load customer auth state
+    try {
+      const raw = localStorage.getItem('moonlet_customer_auth');
+      if (raw) {
+        setCustomerAuth(JSON.parse(raw));
+      }
+    } catch {}
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('moonlet_customer_auth');
+    localStorage.removeItem('moonlet_customer_token');
+    setCustomerAuth(null);
+    setProfileDropdownOpen(false);
+    router.push('/');
+    router.refresh();
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,14 +180,142 @@ export function Header() {
               )}
             </Link>
 
-            {/* Customer Account */}
-            <Link
-              href="/account/orders"
-              className="p-2 text-charcoal hover:text-champagne transition-colors"
-              aria-label="Account"
-            >
-              <User className="h-5 w-5" />
-            </Link>
+            {/* Customer Account / Myntra-Style Profile Dropdown */}
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                className="p-2 text-charcoal hover:text-champagne transition-colors flex items-center gap-1 focus:outline-none cursor-pointer"
+                aria-label="Profile"
+              >
+                <User className="h-5 w-5" />
+                <span className="hidden xl:inline text-xs font-semibold">
+                  {customerAuth ? (customerAuth.name?.split(' ')[0] || 'Profile') : 'Profile'}
+                </span>
+                <ChevronDown className="h-3 w-3 text-charcoal/50" />
+              </button>
+
+              {/* Myntra Dropdown Menu */}
+              {profileDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-champagne/25 py-3 z-50 text-charcoal font-sans animate-in fade-in slide-in-from-top-2">
+                  {customerAuth ? (
+                    <>
+                      {/* Logged in Header */}
+                      <div className="px-5 py-3 border-b border-champagne/15 bg-blush/20">
+                        <h4 className="text-sm font-bold text-charcoal">
+                          Hello {customerAuth.name || 'Customer'}
+                        </h4>
+                        <p className="text-xs text-charcoal/60 mt-0.5 font-medium">
+                          {customerAuth.phone || customerAuth.email || ''}
+                        </p>
+                      </div>
+
+                      {/* Action Links */}
+                      <div className="py-2 text-xs font-medium divide-y divide-champagne/10">
+                        <div className="py-1">
+                          <Link
+                            href="/account/orders"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                          >
+                            <Package className="h-4 w-4 text-charcoal/70" />
+                            <span>Orders</span>
+                          </Link>
+
+                          <Link
+                            href="/wishlist"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                          >
+                            <Heart className="h-4 w-4 text-charcoal/70" />
+                            <span>Wishlist ({wishlistCount})</span>
+                          </Link>
+
+                          <a
+                            href="https://wa.me/919876543210?text=Hi%20Moonlet%2C%20I%20need%20styling%20advice%20or%20support%20with%20my%20order."
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                          >
+                            <MessageCircle className="h-4 w-4 text-emerald-600" />
+                            <span>Contact Us</span>
+                          </a>
+                        </div>
+
+                        <div className="py-1">
+                          <Link
+                            href="/account/profile"
+                            onClick={() => setProfileDropdownOpen(false)}
+                            className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                          >
+                            <Settings className="h-4 w-4 text-charcoal/70" />
+                            <span>Edit Profile / Settings</span>
+                          </Link>
+
+                          <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="w-full text-left flex items-center gap-3 px-5 py-2 hover:bg-rose/10 text-rose transition-colors cursor-pointer"
+                          >
+                            <LogOut className="h-4 w-4 text-rose" />
+                            <span className="font-semibold">Logout</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Guest Header */}
+                      <div className="px-5 py-3 border-b border-champagne/15 bg-blush/20">
+                        <h4 className="text-sm font-bold text-charcoal">Welcome</h4>
+                        <p className="text-xs text-charcoal/60 mt-0.5">
+                          To access account and manage orders
+                        </p>
+                        <Link
+                          href="/login"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="mt-3 block text-center py-2 px-4 bg-charcoal text-ivory text-xs font-bold rounded-xl hover:bg-champagne-dark transition-all shadow-xs"
+                        >
+                          LOGIN / SIGNUP
+                        </Link>
+                      </div>
+
+                      <div className="py-2 text-xs font-medium">
+                        <Link
+                          href="/login"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                        >
+                          <Package className="h-4 w-4 text-charcoal/70" />
+                          <span>Orders</span>
+                        </Link>
+
+                        <Link
+                          href="/wishlist"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                        >
+                          <Heart className="h-4 w-4 text-charcoal/70" />
+                          <span>Wishlist</span>
+                        </Link>
+
+                        <a
+                          href="https://wa.me/919876543210?text=Hi%20Moonlet%2C%20I%20have%20an%20inquiry%20about%20your%20jewelry%20collections."
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setProfileDropdownOpen(false)}
+                          className="flex items-center gap-3 px-5 py-2 hover:bg-champagne/10 hover:text-champagne-dark transition-colors"
+                        >
+                          <MessageCircle className="h-4 w-4 text-emerald-600" />
+                          <span>Contact Us</span>
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Cart Drawer Button */}
             <button
