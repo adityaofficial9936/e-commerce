@@ -8,6 +8,8 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'crypto';
+import twilio from 'twilio';
+import nodemailer from 'nodemailer';
 import {
   RegisterDto,
   LoginDto,
@@ -242,6 +244,78 @@ export class AuthService {
     await this.redis.set(rateLimitKey, currentCount.toString(), 900);
 
     this.logger.log(`[OTP] Generated OTP for ${dto.identifier}: ${otp}`);
+
+    const isEmail = dto.identifier.includes('@');
+
+    // 1. Dispatch Email OTP via Nodemailer
+    if (isEmail) {
+      const smtpUser = this.configService.get<string>('SMTP_USER');
+      const smtpPass = this.configService.get<string>('SMTP_PASS');
+      if (smtpUser && smtpPass) {
+        try {
+          const transporter = nodemailer.createTransport({
+            host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
+            port: Number(this.configService.get<number>('SMTP_PORT', 465)),
+            secure: String(this.configService.get('SMTP_SECURE', 'true')) === 'true',
+            auth: {
+              user: smtpUser,
+              pass: smtpPass.replace(/\s+/g, ''),
+            },
+          });
+
+          await transporter.sendMail({
+            from: this.configService.get<string>('EMAIL_FROM', `Moonlet Support <${smtpUser}>`),
+            to: dto.identifier,
+            subject: `${otp} is your Moonlet verification passcode`,
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 28px; border: 1px solid #e0c8b0; border-radius: 16px; background-color: #faf9f5;">
+                <h2 style="color: #1a1a1a; margin-top: 0; font-family: Georgia, serif; font-size: 22px;">Moonlet Verification</h2>
+                <p style="color: #4a4a4a; font-size: 14px; line-height: 1.5;">Your one-time passcode to sign in or activate your Moonlet account is:</p>
+                <div style="background-color: #ffffff; border: 1px solid #d4af37; border-radius: 12px; padding: 18px; text-align: center; margin: 20px 0;">
+                  <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1a1a1a; font-family: monospace;">${otp}</span>
+                </div>
+                <p style="color: #7a7a7a; font-size: 12px; line-height: 1.4;">This passcode is valid for <strong>5 minutes</strong>. If you did not request this, please ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #e0c8b0; margin: 20px 0;" />
+                <p style="color: #999999; font-size: 11px; text-align: center;">© 2026 Moonlet Fine Jewelry. All rights reserved.</p>
+              </div>
+            `,
+          });
+          this.logger.log(`[Email OTP] Successfully dispatched OTP to ${dto.identifier}`);
+        } catch (err: any) {
+          this.logger.error(`[Email OTP] Failed to send email via SMTP: ${err?.message}`, err?.stack);
+        }
+      } else {
+        this.logger.warn(`[Email OTP] SMTP credentials not set. Code: ${otp}`);
+      }
+    } else {
+      // 2. Dispatch SMS OTP via Twilio
+      const twilioSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
+      const twilioAuth = this.configService.get<string>('TWILIO_AUTH_TOKEN');
+      const twilioFrom = this.configService.get<string>('TWILIO_PHONE_NUMBER');
+
+      if (twilioSid && twilioAuth && twilioFrom) {
+        try {
+          const client = twilio(twilioSid, twilioAuth);
+          const rawPhone = dto.identifier.replace(/\D/g, '');
+          const targetPhone = dto.identifier.startsWith('+')
+            ? dto.identifier
+            : rawPhone.length === 10
+            ? `+91${rawPhone}`
+            : `+${rawPhone}`;
+
+          await client.messages.create({
+            body: `Your Moonlet verification code is ${otp}. Valid for 5 minutes. Do not share this code.`,
+            from: twilioFrom,
+            to: targetPhone,
+          });
+          this.logger.log(`[Twilio SMS] Dispatched OTP SMS to ${targetPhone}`);
+        } catch (err: any) {
+          this.logger.error(`[Twilio SMS] Failed to send SMS via Twilio: ${err?.message}`, err?.stack);
+        }
+      } else {
+        this.logger.warn(`[Twilio SMS] Twilio credentials not set. Code: ${otp}`);
+      }
+    }
 
     return {
       message: 'OTP sent successfully',
