@@ -19,7 +19,10 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // CORS
-  const corsOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001').split(',');
+  const configuredCors = process.env.CORS_ORIGINS;
+  const corsOrigins = configuredCors
+    ? configuredCors.split(',').map((o) => o.trim())
+    : true;
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
@@ -53,8 +56,8 @@ async function bootstrap() {
     SwaggerModule.setup('docs', app, document);
   }
 
-  const port = process.env.API_PORT || 4000;
-  await app.listen(port);
+  const port = Number(process.env.PORT || process.env.API_PORT || 4000);
+  await app.listen(port, '0.0.0.0');
   console.log(`🚀 API server is running on: http://localhost:${port}/v1`);
   console.log(`📚 Swagger documentation at: http://localhost:${port}/docs`);
   console.log(`🩺 Healthcheck endpoint: http://localhost:${port}/v1/health`);
