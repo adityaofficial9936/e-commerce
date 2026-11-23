@@ -136,16 +136,39 @@ export default function CustomerLoginPage() {
     setSuccessMessage('Account created! Welcome to Moonlet VIP Club.');
     setSuccess(true);
     setTimeout(() => {
-      localStorage.setItem(
-        'moonlet_customer_auth',
-        JSON.stringify({
-          name: regName || 'Moonlet Member',
-          email: regEmail,
-          phone: regPhone,
-          vip: joinClub,
-          welcomeRewardApplied: true,
-        })
-      );
+      const customerRecord = {
+        name: regName || 'Moonlet Member',
+        email: regEmail,
+        phone: regPhone || '+91 98765 00000',
+        vip: joinClub,
+        welcomeRewardApplied: true,
+      };
+
+      try {
+        localStorage.setItem('moonlet_customer_auth', JSON.stringify(customerRecord));
+
+        // Sync with admin customer database
+        const existingRaw = localStorage.getItem('moonlet_registered_customers');
+        const existing = existingRaw ? JSON.parse(existingRaw) : [];
+        const newCustomerEntry = {
+          id: `cust-${Date.now()}`,
+          name: regName.trim() || 'New Customer',
+          email: regEmail.trim(),
+          phone: regPhone.trim() || '+91 98765 00000',
+          segment: joinClub ? 'VIP' : 'Regular',
+          ordersCount: 0,
+          totalSpentMinor: 0,
+          status: 'ACTIVE',
+          joinedDate: 'Just now',
+        };
+        localStorage.setItem(
+          'moonlet_registered_customers',
+          JSON.stringify([newCustomerEntry, ...existing.filter((c: any) => c.email !== regEmail)])
+        );
+      } catch (err) {
+        console.error('Storage sync error:', err);
+      }
+
       router.push('/account/orders');
     }, 700);
   };

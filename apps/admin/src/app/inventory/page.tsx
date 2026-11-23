@@ -50,130 +50,109 @@ interface ProductItem {
 
 const INITIAL_INVENTORY: ProductItem[] = [
   {
-    id: 'prod-001',
-    sku: 'DEF-456-BLU',
-    name: 'Stihl TS 800 cut-off machine incl. 5x diamond cutting discs',
-    category: 'Grinding Equipment',
-    brand: 'Apex Industrial',
-    priceMinor: 159000,
-    quantityOnHand: 19,
-    reserved: 5,
-    status: 'Active',
-    variant: '14-inch Blade / High-Torque',
-    images: [
-      {
-        id: 'img-1',
-        url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&auto=format&fit=crop&q=80',
-        altText: 'Stihl TS 800 Main',
-        isPrimary: true,
-      },
-    ],
-    monthlySales: [12, 18, 15, 25, 32, 28, 42],
-  },
-  {
-    id: 'prod-002',
-    sku: 'GH-789-GRN',
-    name: 'Gasoline generator EYG 7500i (Inverter)',
-    category: 'Power generators',
-    brand: 'Apex Power',
-    priceMinor: 153700,
-    quantityOnHand: 8,
+    id: 'ear-1',
+    sku: 'SKU-EAR-1',
+    name: 'Celestial Star Huggie Hoops',
+    category: 'Earrings',
+    brand: 'Moonlet',
+    priceMinor: 79900,
+    quantityOnHand: 25,
     reserved: 2,
     status: 'Active',
-    variant: '7.5 kW / Silent Inverter',
+    variant: '18k Gold-Tone Edition',
     images: [
       {
-        id: 'img-2',
-        url: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&auto=format&fit=crop&q=80',
-        altText: 'Generator Main',
+        id: 'img-ear-1',
+        url: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=800&auto=format&fit=crop&q=80',
+        altText: 'Celestial Star Huggie Hoops',
         isPrimary: true,
       },
     ],
-    monthlySales: [8, 12, 14, 18, 22, 29, 35],
+    monthlySales: [14, 22, 28, 35, 42, 50, 68],
   },
   {
-    id: 'prod-003',
-    sku: 'JK-012-BLK',
-    name: 'Reversible vibratory plate VSS-WP160H',
-    category: 'Vibration equipment',
-    brand: 'Apex Heavy',
-    priceMinor: 219900,
-    quantityOnHand: 4,
-    reserved: 1,
-    status: 'Low Stock',
-    variant: '160 kg / Honda Engine',
-    images: [
-      {
-        id: 'img-3',
-        url: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&auto=format&fit=crop&q=80',
-        altText: 'Vibratory plate',
-        isPrimary: true,
-      },
-    ],
-    monthlySales: [4, 6, 5, 8, 11, 9, 14],
-  },
-  {
-    id: 'prod-004',
-    sku: 'MND-345-WHT',
-    name: 'Prompower P25-300-4-320-6 soft starter',
-    category: 'Circuit breakers',
-    brand: 'Apex Electrics',
-    priceMinor: 48900,
-    quantityOnHand: 34,
+    id: 'neck-1',
+    sku: 'SKU-NECK-1',
+    name: 'Lumina Liquid Gold Herringbone Snake Chain',
+    category: 'Necklaces',
+    brand: 'Moonlet',
+    priceMinor: 129900,
+    quantityOnHand: 25,
     reserved: 3,
     status: 'Active',
-    variant: '320A / 400V',
+    variant: '18k Gold-Tone Edition',
     images: [
       {
-        id: 'img-4',
-        url: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=400&auto=format&fit=crop&q=80',
-        altText: 'Soft starter',
+        id: 'img-neck-1',
+        url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=80',
+        altText: 'Lumina Liquid Gold Herringbone Snake Chain',
         isPrimary: true,
       },
     ],
-    monthlySales: [15, 20, 25, 28, 35, 40, 52],
+    monthlySales: [10, 16, 21, 29, 38, 45, 59],
   },
   {
-    id: 'prod-005',
-    sku: 'PQR-678-YLW',
-    name: 'Thermal imaging sight iRay Saim SCT 35 V2',
-    category: 'Thermal imaging',
-    brand: 'Apex Optics',
-    priceMinor: 289900,
-    quantityOnHand: 11,
-    reserved: 0,
+    id: 'ring-1',
+    sku: 'SKU-RING-1',
+    name: 'Stella Pave Eternity Shimmer Band',
+    category: 'Rings',
+    brand: 'Moonlet',
+    priceMinor: 69900,
+    quantityOnHand: 25,
+    reserved: 1,
     status: 'Active',
-    variant: '35mm Lens / 12μm Detector',
+    variant: '18k Gold-Tone Edition',
     images: [
       {
-        id: 'img-5',
-        url: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&auto=format&fit=crop&q=80',
-        altText: 'Thermal sight',
+        id: 'img-ring-1',
+        url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&auto=format&fit=crop&q=80',
+        altText: 'Stella Pave Eternity Shimmer Band',
         isPrimary: true,
       },
     ],
-    monthlySales: [3, 5, 7, 6, 12, 15, 19],
+    monthlySales: [8, 14, 18, 25, 30, 39, 48],
   },
   {
-    id: 'prod-006',
-    sku: 'STU-901-PNK',
-    name: 'DEKraft Circuit Breaker 630A',
-    category: 'Circuit breakers',
-    brand: 'Apex Electrics',
-    priceMinor: 38900,
-    quantityOnHand: 0,
-    reserved: 0,
-    status: 'Archived',
-    variant: '3-Pole / 630A',
+    id: 'brac-1',
+    sku: 'SKU-BRAC-1',
+    name: 'Selene Dainty Paperclip Chain Bracelet',
+    category: 'Bracelets',
+    brand: 'Moonlet',
+    priceMinor: 89900,
+    quantityOnHand: 25,
+    reserved: 4,
+    status: 'Active',
+    variant: '18k Gold-Tone Edition',
     images: [
       {
-        id: 'img-6',
-        url: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=400&auto=format&fit=crop&q=80',
-        altText: 'Circuit breaker',
+        id: 'img-brac-1',
+        url: 'https://images.unsplash.com/photo-1611591475819-79b7b9e78a63?w=800&auto=format&fit=crop&q=80',
+        altText: 'Selene Dainty Paperclip Chain Bracelet',
         isPrimary: true,
       },
     ],
-    monthlySales: [10, 15, 12, 5, 0, 0, 0],
+    monthlySales: [12, 17, 22, 31, 35, 44, 52],
+  },
+  {
+    id: 'wat-1',
+    sku: 'SKU-WAT-1',
+    name: 'Petite Roman Square Mesh Watch in Gold',
+    category: 'Watches',
+    brand: 'Moonlet Timepieces',
+    priceMinor: 249900,
+    quantityOnHand: 20,
+    reserved: 2,
+    status: 'Active',
+    variant: '18k Gold-Tone Edition',
+    images: [
+      {
+        id: 'img-wat-1',
+        url: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=800&auto=format&fit=crop&q=80',
+        altText: 'Petite Roman Square Mesh Watch in Gold',
+        isPrimary: true,
+      },
+    ],
+    monthlySales: [6, 11, 15, 19, 24, 30, 41],
   },
 ];
 
@@ -206,13 +185,13 @@ export default function InventoryPage() {
 
   // Form Fields
   const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState('Grinding Equipment');
-  const [formBrand, setFormBrand] = useState('Apex Industrial');
-  const [formDescription, setFormDescription] = useState('High precision professional equipment built for demanding heavy-duty operations.');
+  const [formCategory, setFormCategory] = useState('Earrings');
+  const [formBrand, setFormBrand] = useState('Moonlet');
+  const [formDescription, setFormDescription] = useState('Everyday luxury anti-tarnish jewelry with 18k gold-tone plating.');
   const [formSku, setFormSku] = useState('');
-  const [formPriceDollars, setFormPriceDollars] = useState('1590.00');
-  const [formQuantity, setFormQuantity] = useState('20');
-  const [formVariant, setFormVariant] = useState('Standard / Heavy-Duty');
+  const [formPriceDollars, setFormPriceDollars] = useState('799.00');
+  const [formQuantity, setFormQuantity] = useState('25');
+  const [formVariant, setFormVariant] = useState('18k Gold-Tone Edition');
   const [formImages, setFormImages] = useState<ProductImage[]>([]);
   const [urlInput, setUrlInput] = useState('');
 
@@ -897,15 +876,16 @@ export default function InventoryPage() {
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                   >
-                    <option value="Grinding Equipment">Grinding Equipment</option>
-                    <option value="Power generators">Power generators</option>
-                    <option value="Vibration equipment">Vibration equipment</option>
-                    <option value="Circuit breakers">Circuit breakers</option>
-                    <option value="Thermal imaging">Thermal imaging</option>
+                    <option value="Earrings">Earrings</option>
+                    <option value="Necklaces">Necklaces</option>
+                    <option value="Watches">Watches</option>
+                    <option value="Rings">Rings</option>
+                    <option value="Bracelets">Bracelets</option>
+                    <option value="Gift Sets">Gift Sets</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Price ($) *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Price (₹) *</label>
                   <input
                     type="number"
                     step="0.01"

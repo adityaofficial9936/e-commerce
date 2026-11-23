@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, Search, User, Menu, X, Heart, Sparkles } from 'lucide-react';
 import { useCartStore, useCartSummary } from '../../store/cart';
+import { useWishlistStore } from '../../store/wishlist';
 
 export function Header() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const openCart = useCartStore((s) => s.openCart);
   const { itemCount } = useCartSummary();
+  const wishlistItems = useWishlistStore((s) => s.items);
+  const wishlistCount = wishlistItems.length;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,11 +117,16 @@ export function Header() {
 
             {/* Wishlist */}
             <Link
-              href="/products?filter=wishlist"
+              href="/wishlist"
               className="p-2 text-charcoal hover:text-champagne transition-colors relative"
               aria-label="Wishlist"
             >
               <Heart className="h-5 w-5" />
+              {wishlistCount > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 bg-rose text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {wishlistCount}
+                </span>
+              )}
             </Link>
 
             {/* Customer Account */}

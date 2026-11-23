@@ -1,68 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-import { exec } from 'child_process';
+import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-const DATA_FILE = path.resolve(process.cwd(), '../../data/products.json');
+const DEFAULT_NEON_URL =
+  process.env.DATABASE_URL ||
+  'postgresql://neondb_owner:npg_6bxDNIT0kVLO@ep-withered-sound-bd4xjr2c-pooler.c-8.us-east-2.aws.neon.tech/neondb?sslmode=require';
 
-function getProductsFilePath(): string {
-  if (fs.existsSync(DATA_FILE)) return DATA_FILE;
-  const rootPath = path.resolve(process.cwd(), '../data/products.json');
-  if (fs.existsSync(rootPath)) return rootPath;
-  const projectRoot = '/Users/adityayadav/ecommerce-platform/data/products.json';
-  if (fs.existsSync(projectRoot)) return projectRoot;
-  return DATA_FILE;
-}
-
-function readProducts(): any[] {
-  try {
-    const filePath = getProductsFilePath();
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch (err) {
-    console.error('Error reading products:', err);
-  }
-  return [];
-}
-
-function writeProducts(products: any[]) {
-  try {
-    const filePath = getProductsFilePath();
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(filePath, JSON.stringify(products, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing products:', err);
-  }
-}
-
-function triggerNeonSync() {
-  try {
-    exec('cd /Users/adityayadav/ecommerce-platform/apps/api && ./node_modules/.bin/ts-node prisma/sync-products.ts', (err) => {
-      if (err) console.error('Postgres sync error:', err.message);
-      else console.log('Successfully synced products to Neon PostgreSQL');
-    });
-  } catch (e) {
-    console.error('Failed to trigger Postgres sync:', e);
-  }
+function getDb() {
+  return neon(DEFAULT_NEON_URL);
 }
 
 export async function GET() {
-  const products = readProducts();
-  return NextResponse.json(products);
+  try {
+    const sql = getDb();
+    const rows = await sql`
+      SELECT 
+        p.id,
+        p.name,
+        p.slug,
+        p.description,
+        coalesce(c.name, 'Jewelry') as category,
+        coalesce(b.name, 'Moonlet') as brand,
+        coalesce(pv.id, concat('var-', p.id)) as "variantId",
+        coalesce(pv.sku, concat('SKU-', upper(p.id))) as sku,
+        coalesce(pv.title, 'Standard Edition') as variant,
+        coalesce(pv.price_minor, 99900) as "priceMinor",
+        coalesce(pv.mrp_minor, 179900) as "mrpMinor",
+        coalesce(inv.quantity, 25) as "quantityOnHand",
+        coalesce(inv.reserved, 0) as reserved,
+        'Active' as status,
+        coalesce(img.url, 'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=800') as "imageUrl"
+      FROM products p
+      LEFT JOIN categories c ON c.id = p.category_id
+      LEFT JOIN brands b ON b.id = p.brand_id
+      LEFT JOIN product_variants pv ON pv.product_id = p.id
+      LEFT JOIN inventory_items inv ON inv.variant_id = pv.id
+      LEFT JOIN LATERAL (
+        SELECT url FROM product_images WHERE product_id = p.id ORDER BY sort_order ASC LIMIT 1
+      ) img ON true
+      WHERE p.deleted_at IS NULL AND p.is_published = true
+      ORDER BY p.created_at DESC;
+    `;
+
+    // Map to include images array
+    const products = rows.map((r: any) => ({
+      ...r,
+      images: [
+        {
+          id: `img-${r.id}`,
+          url: r.imageUrl,
+          altText: r.name,
+          isPrimary: true,
+        },
+      ],
+      monthlySales: [12, 18, 24, 30, 36, 42, 50],
+    }));
+
+    return NextResponse.json(products);
+  } catch (err: any) {
+    console.error('Database query error in /api/products GET:', err);
+    return NextResponse.json([], { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const products = readProducts();
+    const sql = getDb();
 
     const normalizedSku = (body.sku || `SKU-${Date.now()}`).toUpperCase().trim();
     const slug = (body.slug || body.name || `product-${Date.now()}`)
@@ -70,84 +76,158 @@ export async function POST(req: NextRequest) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)+/g, '');
 
-    const newProduct = {
-      id: body.id || `prod-${Date.now()}`,
+    const name = body.name || 'Untitled Jewelry Piece';
+    const category = body.category || 'Jewelry';
+    const brand = body.brand || 'Moonlet';
+    const catSlug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const catId = `cat-${catSlug}`;
+    const prodId = body.id || `prod-${Date.now()}`;
+    const varId = body.variantId || `var-${prodId}`;
+    const priceMinor =
+      typeof body.priceMinor === 'number'
+        ? body.priceMinor
+        : Math.round((parseFloat(body.price) || 99) * 100);
+    const mrpMinor = body.mrpMinor || Math.round(priceMinor * 1.6);
+    const qty =
+      typeof body.quantityOnHand === 'number'
+        ? body.quantityOnHand
+        : parseInt(body.stock, 10) || 20;
+
+    const imageUrl =
+      body.imageUrl ||
+      (body.images && body.images[0]?.url) ||
+      'https://images.unsplash.com/photo-1630019852942-f89202989a59?w=800';
+
+    // 1. Ensure Category
+    await sql`
+      INSERT INTO categories (id, name, slug, description, created_at, updated_at)
+      VALUES (${catId}, ${category}, ${catSlug}, ${category || ''}, NOW(), NOW())
+      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name;
+    `;
+
+    // 2. Ensure Brand
+    await sql`
+      INSERT INTO brands (id, name, slug, created_at, updated_at)
+      VALUES ('brand-moonlet', 'Moonlet', 'moonlet', NOW(), NOW())
+      ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name;
+    `;
+
+    // 3. Upsert Product
+    await sql`
+      INSERT INTO products (id, category_id, brand_id, name, slug, description, is_published, created_at, updated_at)
+      VALUES (${prodId}, ${catId}, 'brand-moonlet', ${name}, ${slug}, ${name}, true, NOW(), NOW())
+      ON CONFLICT (slug) DO UPDATE SET 
+        name = EXCLUDED.name, 
+        category_id = EXCLUDED.category_id,
+        is_published = true,
+        updated_at = NOW();
+    `;
+
+    // 4. Upsert Product Variant
+    await sql`
+      INSERT INTO product_variants (id, product_id, sku, title, price_minor, mrp_minor, currency, attributes, created_at, updated_at)
+      VALUES (${varId}, ${prodId}, ${normalizedSku}, ${body.variant || 'Standard Edition'}, ${priceMinor}, ${mrpMinor}, 'INR', '{"finish": "18k Gold-Tone"}'::jsonb, NOW(), NOW())
+      ON CONFLICT (sku) DO UPDATE SET 
+        price_minor = EXCLUDED.price_minor, 
+        mrp_minor = EXCLUDED.mrp_minor, 
+        title = EXCLUDED.title,
+        updated_at = NOW();
+    `;
+
+    // 5. Upsert Inventory
+    await sql`
+      INSERT INTO inventory_items (id, variant_id, quantity, reserved, created_at, updated_at)
+      VALUES (${`inv-${varId}`}, ${varId}, ${qty}, 0, NOW(), NOW())
+      ON CONFLICT (variant_id) DO UPDATE SET quantity = EXCLUDED.quantity, updated_at = NOW();
+    `;
+
+    // 6. Insert Primary Image
+    await sql`
+      INSERT INTO product_images (id, product_id, url, alt_text, sort_order, created_at)
+      VALUES (${`img-${prodId}`}, ${prodId}, ${imageUrl}, ${name}, 0, NOW())
+      ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url;
+    `;
+
+    const createdProduct = {
+      id: prodId,
       slug,
       sku: normalizedSku,
-      name: body.name || 'Untitled Product',
-      category: body.category || 'General',
-      brand: body.brand || 'Moonlet',
-      priceMinor: typeof body.priceMinor === 'number' ? body.priceMinor : Math.round((parseFloat(body.price) || 99) * 100),
-      mrpMinor: body.mrpMinor || Math.round((body.priceMinor || 9900) * 1.35),
-      quantityOnHand: typeof body.quantityOnHand === 'number' ? body.quantityOnHand : (parseInt(body.stock, 10) || 10),
+      name,
+      category,
+      brand,
+      priceMinor,
+      mrpMinor,
+      quantityOnHand: qty,
       reserved: 0,
-      status: body.status || 'Active',
-      inStock: true,
-      rating: body.rating || 5.0,
-      reviewsCount: body.reviewsCount || 1,
-      variant: body.variant || 'Standard',
-      variantId: body.variantId || `var-${Date.now()}`,
-      images: Array.isArray(body.images) && body.images.length > 0 ? body.images : [
+      status: 'Active',
+      variant: body.variant || 'Standard Edition',
+      variantId: varId,
+      imageUrl,
+      images: [
         {
-          id: `img-${Date.now()}`,
-          url: body.imageUrl || 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=700&auto=format&fit=crop&q=80',
-          altText: body.name,
+          id: `img-${prodId}`,
+          url: imageUrl,
+          altText: name,
           isPrimary: true,
-        }
+        },
       ],
-      imageUrl: body.imageUrl || (body.images && body.images[0]?.url) || 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=700&auto=format&fit=crop&q=80',
-      monthlySales: body.monthlySales || [5, 12, 18, 24, 30, 38, 45],
+      monthlySales: [5, 12, 18, 25, 32, 38, 45],
     };
 
-    const updated = [newProduct, ...products.filter((p: any) => p.id !== newProduct.id && p.sku !== newProduct.sku)];
-    writeProducts(updated);
-    triggerNeonSync();
-
-    return NextResponse.json(newProduct, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to save product' }, { status: 500 });
+    return NextResponse.json({ success: true, product: createdProduct }, { status: 201 });
+  } catch (err: any) {
+    console.error('Error inserting product in Neon DB:', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'Database insert failed' },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const products = readProducts();
+    const sql = getDb();
 
-    const targetId = body.id;
-    const targetSku = body.sku ? body.sku.toUpperCase().trim() : null;
-
-    const existingIndex = products.findIndex((p: any) => p.id === targetId || (targetSku && p.sku === targetSku));
-    if (existingIndex === -1) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+    if (!body.id && !body.sku) {
+      return NextResponse.json({ error: 'Product id or sku required' }, { status: 400 });
     }
 
-    const current = products[existingIndex];
-    const updatedPriceMinor = typeof body.priceMinor === 'number' ? body.priceMinor : (body.price ? Math.round(parseFloat(body.price) * 100) : current.priceMinor);
-    const updatedStock = typeof body.quantityOnHand === 'number' ? body.quantityOnHand : (body.stock ? parseInt(body.stock, 10) : current.quantityOnHand);
+    const priceMinor =
+      typeof body.priceMinor === 'number'
+        ? body.priceMinor
+        : Math.round((parseFloat(body.price) || 99) * 100);
+    const qty =
+      typeof body.quantityOnHand === 'number'
+        ? body.quantityOnHand
+        : parseInt(body.stock, 10) || 20;
 
-    const updatedProduct = {
-      ...current,
-      name: body.name || current.name,
-      category: body.category || current.category,
-      brand: body.brand || current.brand,
-      sku: targetSku || current.sku,
-      priceMinor: updatedPriceMinor,
-      mrpMinor: body.mrpMinor || current.mrpMinor || Math.round(updatedPriceMinor * 1.35),
-      quantityOnHand: updatedStock,
-      status: body.status || current.status,
-      variant: body.variant || current.variant,
-      imageUrl: body.imageUrl || current.imageUrl,
-      images: body.imageUrl ? [{ id: `img-${Date.now()}`, url: body.imageUrl, altText: body.name || current.name, isPrimary: true }] : current.images,
-    };
+    if (body.sku) {
+      await sql`
+        UPDATE product_variants 
+        SET price_minor = ${priceMinor}, updated_at = NOW()
+        WHERE sku = ${body.sku.toUpperCase()};
+      `;
 
-    products[existingIndex] = updatedProduct;
-    writeProducts(products);
-    triggerNeonSync();
+      await sql`
+        UPDATE inventory_items
+        SET quantity = ${qty}, updated_at = NOW()
+        WHERE variant_id IN (SELECT id FROM product_variants WHERE sku = ${body.sku.toUpperCase()});
+      `;
+    }
 
-    return NextResponse.json(updatedProduct);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to update product' }, { status: 500 });
+    if (body.name && body.id) {
+      await sql`
+        UPDATE products 
+        SET name = ${body.name}, updated_at = NOW()
+        WHERE id = ${body.id};
+      `;
+    }
+
+    return NextResponse.json({ success: true, message: 'Product updated in Neon database' });
+  } catch (err: any) {
+    console.error('Error updating product in Neon DB:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
 
@@ -156,32 +236,20 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const sku = searchParams.get('sku');
+    const sql = getDb();
 
-    let bodyId: string | null = null;
-    try {
-      const body = await req.json();
-      bodyId = body.id || body.sku;
-    } catch {
-      // json body optional if using query params
+    if (id) {
+      await sql`UPDATE products SET deleted_at = NOW() WHERE id = ${id};`;
+    } else if (sku) {
+      await sql`
+        UPDATE products SET deleted_at = NOW() 
+        WHERE id IN (SELECT product_id FROM product_variants WHERE sku = ${sku.toUpperCase()});
+      `;
     }
 
-    const target = id || sku || bodyId;
-    if (!target) {
-      return NextResponse.json({ error: 'Product ID or SKU is required' }, { status: 400 });
-    }
-
-    const products = readProducts();
-    const filtered = products.filter((p: any) => p.id !== target && p.sku !== target);
-
-    if (filtered.length === products.length) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
-    }
-
-    writeProducts(filtered);
-    triggerNeonSync();
-
-    return NextResponse.json({ success: true, deletedId: target });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Failed to delete product' }, { status: 500 });
+    return NextResponse.json({ success: true, message: 'Product soft-deleted from Neon database' });
+  } catch (err: any) {
+    console.error('Error deleting product in Neon DB:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

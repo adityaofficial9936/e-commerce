@@ -5,6 +5,7 @@ import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
 import { CartDrawer } from '../components/cart/CartDrawer';
 import { AiChatWidget } from '../components/chat/AiChatWidget';
+import { WhatsAppButton } from '../components/common/WhatsAppButton';
 
 export const metadata: Metadata = {
   title: 'Moonlet | Everyday Luxury Jewelry & Timepieces',
@@ -38,6 +39,7 @@ export default function RootLayout({
         <Footer />
         <CartDrawer />
         <AiChatWidget />
+        <WhatsAppButton />
       </body>
     </html>
   );

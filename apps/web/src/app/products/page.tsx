@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Star, ShoppingBag, Filter, Check, Search, X, Heart, SlidersHorizontal, Sparkles } from 'lucide-react';
 import { useCartStore } from '../../store/cart';
+import { useWishlistStore } from '../../store/wishlist';
 
 interface ProductItem {
   id: string;
@@ -410,12 +411,42 @@ function CatalogContent() {
   const [inStockOnly, setInStockOnly] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('featured');
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
 
-  const toggleWishlist = (id: string, e: React.MouseEvent) => {
+  const { toggleItem, isInWishlist } = useWishlistStore();
+
+  useEffect(() => {
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const dbSlugs = new Set(data.map((p) => p.slug));
+          const remaining = JEWELRY_CATALOG.filter((p) => !dbSlugs.has(p.slug));
+          setProducts([...data, ...remaining]);
+        }
+      })
+      .catch((err) => console.error('Failed to load products from /api/products:', err));
+  }, []);
+
+  const toggleWishlist = (product: ProductItem, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
+    toggleItem({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      category: product.category,
+      finish: product.finish,
+      material: product.material,
+      brand: product.brand,
+      priceMinor: product.priceMinor,
+      mrpMinor: product.mrpMinor,
+      imageUrl: product.imageUrl,
+      rating: product.rating,
+      reviewsCount: product.reviewsCount,
+      variantId: product.variantId,
+      inStock: product.inStock,
+      tag: product.tag,
+    });
   };
 
   const handleQuickAdd = (product: ProductItem, e: React.MouseEvent) => {
@@ -658,7 +689,7 @@ function CatalogContent() {
                   const discount = Math.round(
                     ((product.mrpMinor - product.priceMinor) / product.mrpMinor) * 100
                   );
-                  const isWishlisted = !!wishlist[product.id];
+                  const isWishlisted = isInWishlist(product.id);
 
                   return (
                     <div
@@ -685,7 +716,7 @@ function CatalogContent() {
 
                           {/* Wishlist Button */}
                           <button
-                            onClick={(e) => toggleWishlist(product.id, e)}
+                            onClick={(e) => toggleWishlist(product, e)}
                             className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-xs rounded-full shadow-xs text-charcoal/70 hover:text-rose hover:scale-110 transition-all cursor-pointer"
                             aria-label="Save to Wishlist"
                           >

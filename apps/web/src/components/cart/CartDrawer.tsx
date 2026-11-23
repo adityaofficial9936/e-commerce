@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { X, Trash2, Plus, Minus, ArrowRight, Tag, ShieldCheck, Sparkles } from 'lucide-react';
+import { X, Trash2, Plus, Minus, ArrowRight, Tag, ShieldCheck, Sparkles, Heart } from 'lucide-react';
 import { useCartStore, useCartSummary } from '../../store/cart';
+import { useWishlistStore } from '../../store/wishlist';
 
 export function CartDrawer() {
   const isOpen = useCartStore((s) => s.isOpen);
@@ -47,6 +48,26 @@ export function CartDrawer() {
     } else {
       setCouponError('Invalid coupon. Try: MOONLET15 or WELCOME10');
     }
+  };
+
+  const handleMoveToWishlist = (item: any) => {
+    useWishlistStore.getState().addItem({
+      id: item.productId,
+      slug: item.productId,
+      name: item.name,
+      category: 'Jewelry',
+      finish: item.variantTitle || '18k Gold-Tone',
+      material: 'Anti-Tarnish Stainless Steel',
+      brand: 'Moonlet',
+      priceMinor: item.priceMinor,
+      mrpMinor: Math.round(item.priceMinor * 1.5),
+      imageUrl: item.imageUrl,
+      rating: 4.9,
+      reviewsCount: 48,
+      variantId: item.variantId,
+      inStock: true,
+    });
+    removeItem(item.variantId);
   };
 
   if (!isOpen) return null;
@@ -170,14 +191,24 @@ export function CartDrawer() {
                         </button>
                       </div>
 
-                      <button
-                        onClick={() => removeItem(item.variantId)}
-                        className="text-charcoal/40 hover:text-rose text-xs flex items-center gap-1 transition-colors"
-                        aria-label="Remove item"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        <span className="text-[11px]">Remove</span>
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleMoveToWishlist(item)}
+                          className="text-charcoal/50 hover:text-rose text-[11px] font-medium flex items-center gap-1 transition-colors"
+                          title="Move to Wishlist"
+                        >
+                          <Heart className="h-3.5 w-3.5 fill-rose/20 text-rose" />
+                          <span>Wishlist</span>
+                        </button>
+                        <button
+                          onClick={() => removeItem(item.variantId)}
+                          className="text-charcoal/40 hover:text-rose text-[11px] flex items-center gap-1 transition-colors"
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

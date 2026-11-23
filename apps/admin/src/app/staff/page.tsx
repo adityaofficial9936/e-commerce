@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   Shield,
@@ -17,7 +17,10 @@ import {
   Phone,
   Sparkles,
   ShoppingBag,
+  Copy,
+  Check,
 } from 'lucide-react';
+import { useStaffAuth, StaffRole } from '../../context/StaffAuthContext';
 
 interface StaffMember {
   id: string;
@@ -137,10 +140,25 @@ const INITIAL_CUSTOMERS: CustomerAccount[] = [
 ];
 
 export default function StaffPage() {
+  const { registerStaffMember } = useStaffAuth();
   const [activeTab, setActiveTab] = useState<'STAFF' | 'CUSTOMERS'>('STAFF');
   const [staff, setStaff] = useState<StaffMember[]>(INITIAL_STAFF);
   const [customers, setCustomers] = useState<CustomerAccount[]>(INITIAL_CUSTOMERS);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('moonlet_registered_customers');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const registeredEmails = new Set(parsed.map((p) => p.email));
+          const remaining = INITIAL_CUSTOMERS.filter((c) => !registeredEmails.has(c.email));
+          setCustomers([...parsed, ...remaining]);
+        }
+      }
+    } catch {}
+  }, []);
 
   // Staff Modals
   const [isInviteStaffModalOpen, setIsInviteStaffModalOpen] = useState(false);
@@ -148,9 +166,11 @@ export default function StaffPage() {
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [staffFormName, setStaffFormName] = useState('');
   const [staffFormEmail, setStaffFormEmail] = useState('');
+  const [staffFormPassword, setStaffFormPassword] = useState('Welcome@Moonlet2026!');
   const [staffFormRole, setStaffFormRole] = useState('Catalog Manager');
   const [staffFormStatus, setStaffFormStatus] = useState<'ACTIVE' | 'INVITED' | 'SUSPENDED'>('ACTIVE');
   const [staffForm2FA, setStaffForm2FA] = useState(true);
+  const [copiedCreds, setCopiedCreds] = useState(false);
 
   // Customer Modals
   const [isCreateCustomerModalOpen, setIsCreateCustomerModalOpen] = useState(false);
@@ -216,8 +236,27 @@ export default function StaffPage() {
     e.preventDefault();
     if (!staffFormName.trim() || !staffFormEmail.trim()) return;
 
+    const roleKeyMap: Record<string, StaffRole> = {
+      'Super Admin': 'SUPER_ADMIN',
+      'Catalog Manager': 'CATALOG_MANAGER',
+      'Order Manager': 'ORDER_MANAGER',
+      'Support Lead': 'SUPPORT_LEAD',
+      'Finance Manager': 'FINANCE_MANAGER',
+    };
+    const roleKey: StaffRole = roleKeyMap[staffFormRole] || 'CATALOG_MANAGER';
+    const staffId = `staff-${Date.now()}`;
+
+    // Register into persistent staff directory for instant authentication
+    registerStaffMember({
+      id: staffId,
+      name: staffFormName.trim(),
+      email: staffFormEmail.trim(),
+      password: staffFormPassword.trim(),
+      role: roleKey,
+    });
+
     const newStaff: StaffMember = {
-      id: `staff-${Date.now()}`,
+      id: staffId,
       name: staffFormName.trim(),
       email: staffFormEmail.trim(),
       role: staffFormRole,
@@ -228,10 +267,11 @@ export default function StaffPage() {
 
     setStaff((prev) => [...prev, newStaff]);
     setIsInviteStaffModalOpen(false);
+    setToastMessage(`Staff account created for "${newStaff.email}". Password: ${staffFormPassword}`);
     setStaffFormName('');
     setStaffFormEmail('');
-    setToastMessage(`Invitation dispatched to "${newStaff.email}".`);
-    setTimeout(() => setToastMessage(null), 4000);
+    setStaffFormPassword('Welcome@Moonlet2026!');
+    setTimeout(() => setToastMessage(null), 8000);
   };
 
   // Customer Handlers
@@ -739,6 +779,21 @@ export default function StaffPage() {
                   <option value="Finance Manager">Finance Manager</option>
                   <option value="Super Admin">Super Admin</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Initial Access Password *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Welcome@Moonlet2026!"
+                  value={staffFormPassword}
+                  onChange={(e) => setStaffFormPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Share this password with the staff member securely. They will use this along with their email to log in.
+                </p>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
