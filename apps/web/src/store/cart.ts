@@ -9,7 +9,7 @@ interface CartState {
   discountMinor: number;
   openCart: () => void;
   closeCart: () => void;
-  addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
+  addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number, openDrawer?: boolean) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   applyCoupon: (code: string, discountMinor: number) => void;
@@ -18,18 +18,7 @@ interface CartState {
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
-  items: [
-    {
-      variantId: 'var-demo-1',
-      productId: 'prod-demo-1',
-      name: 'Air Velocity Pro Running Sneakers',
-      variantTitle: 'Size: 9 / Navy Blue',
-      imageUrl: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80',
-      priceMinor: 249900,
-      quantity: 1,
-      availableStock: 8,
-    },
-  ],
+  items: [],
   isOpen: false,
   couponCode: null,
   discountMinor: 0,
@@ -37,7 +26,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   openCart: () => set({ isOpen: true }),
   closeCart: () => set({ isOpen: false }),
 
-  addItem: (item, quantity = 1) => {
+  addItem: (item, quantity = 1, openDrawer = false) => {
     set((state) => {
       const existing = state.items.find((i) => i.variantId === item.variantId);
       if (existing) {
@@ -46,12 +35,12 @@ export const useCartStore = create<CartState>((set, get) => ({
           items: state.items.map((i) =>
             i.variantId === item.variantId ? { ...i, quantity: newQty } : i
           ),
-          isOpen: true,
+          isOpen: openDrawer ? true : state.isOpen,
         };
       }
       return {
         items: [...state.items, { ...item, quantity: Math.min(quantity, item.availableStock) }],
-        isOpen: true,
+        isOpen: openDrawer ? true : state.isOpen,
       };
     });
   },

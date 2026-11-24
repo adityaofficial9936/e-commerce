@@ -17,6 +17,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { useCartStore } from '../store/cart';
+import { useWishlistStore } from '../store/wishlist';
 import { InView } from '@/components/core/in-view';
 import {
   MorphingDialog,
@@ -210,11 +211,11 @@ const CATEGORIES = [
 
 export default function MoonletHomePage() {
   const addItem = useCartStore((s) => s.addItem);
-  const openCart = useCartStore((s) => s.openCart);
+  const { toggleItem, isInWishlist } = useWishlistStore();
 
   const [products, setProducts] = useState<ProductItem[]>(JEWELRY_SEED_PRODUCTS);
   const [selectedArrivalCategory, setSelectedArrivalCategory] = useState<string>('All');
-  const [wishlist, setWishlist] = useState<Record<string, boolean>>({});
+  const [quickAddedIds, setQuickAddedIds] = useState<Record<string, boolean>>({});
   const [newsletterEmail, setNewsletterEmail] = useState('');
   const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
   const [hotspotActive, setHotspotActive] = useState<number | null>(0);
@@ -252,10 +253,25 @@ export default function MoonletHomePage() {
       .catch((err) => console.error('Failed to fetch catalog:', err));
   }, []);
 
-  const toggleWishlist = (id: string, e: React.MouseEvent) => {
+  const handleToggleWishlist = (product: ProductItem, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setWishlist((prev) => ({ ...prev, [id]: !prev[id] }));
+    toggleItem({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      category: product.category,
+      finish: '18k Champagne Gold',
+      material: product.material || '18k Gold-Plated Finish',
+      brand: product.brand || 'Moonlet',
+      priceMinor: product.priceMinor,
+      mrpMinor: product.mrpMinor || Math.round(product.priceMinor * 1.45),
+      imageUrl: product.imageUrl,
+      rating: product.rating || 4.9,
+      reviewsCount: product.reviewsCount || 48,
+      variantId: product.variantId || `var-${product.id}`,
+      inStock: product.inStock !== false,
+    });
   };
 
   const handleQuickAdd = (product: ProductItem, e: React.MouseEvent) => {
@@ -269,8 +285,16 @@ export default function MoonletHomePage() {
       imageUrl: product.imageUrl,
       priceMinor: product.priceMinor,
       availableStock: 20,
-    });
-    openCart();
+    }, 1, false);
+
+    setQuickAddedIds((prev) => ({ ...prev, [product.id]: true }));
+    setTimeout(() => {
+      setQuickAddedIds((prev) => {
+        const next = { ...prev };
+        delete next[product.id];
+        return next;
+      });
+    }, 2000);
   };
 
   const arrivalCategories = ['All', 'Earrings', 'Necklaces', 'Watches', 'Rings', 'Bracelets'];
@@ -454,12 +478,13 @@ export default function MoonletHomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
           {bestSellers.map((prod, index) => {
-            const isWish = !!wishlist[prod.id];
+            const isWish = isInWishlist(prod.id);
             const discountPercent = prod.mrpMinor
               ? Math.round(((prod.mrpMinor - prod.priceMinor) / prod.mrpMinor) * 100)
               : null;
+            const isAdded = !!quickAddedIds[prod.id];
 
             return (
               <InView
@@ -508,14 +533,14 @@ export default function MoonletHomePage() {
                     </MorphingDialog>
 
                     {/* Badge */}
-                    <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none">
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 pointer-events-none">
                       {prod.isNew && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-charcoal text-ivory">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-charcoal text-ivory">
                           New
                         </span>
                       )}
                       {discountPercent && discountPercent > 0 && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose text-white">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-rose text-white">
                           Save {discountPercent}%
                         </span>
                       )}
@@ -524,45 +549,45 @@ export default function MoonletHomePage() {
                     {/* Wishlist Button */}
                     <button
                       type="button"
-                      onClick={(e) => toggleWishlist(prod.id, e)}
+                      onClick={(e) => handleToggleWishlist(prod, e)}
                       aria-label="Save to wishlist"
-                      className="absolute top-3 right-3 p-2 rounded-full bg-white/90 backdrop-blur-xs text-charcoal hover:text-rose transition-colors shadow-xs"
+                      className="absolute top-2.5 right-2.5 p-1.5 sm:p-2 rounded-full bg-white/90 backdrop-blur-xs text-charcoal hover:text-rose transition-colors shadow-xs"
                     >
                       <Heart className={`h-4 w-4 ${isWish ? 'fill-rose text-rose' : ''}`} />
                     </button>
                   </div>
 
                   {/* Body Content */}
-                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px] text-charcoal/50">
+                  <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between space-y-3 sm:space-y-4">
+                    <div className="space-y-1 sm:space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-charcoal/50">
                         <span className="uppercase tracking-wider font-semibold text-champagne-dark">{prod.category}</span>
                         <div className="flex items-center gap-1 text-amber-500 font-medium">
                           <Star className="h-3 w-3 fill-current" />
                           <span>{prod.rating || 4.9}</span>
-                          <span className="text-charcoal/40">({prod.reviewsCount || 45})</span>
+                          <span className="text-charcoal/40 hidden sm:inline">({prod.reviewsCount || 45})</span>
                         </div>
                       </div>
 
                       <Link
                         href={`/products/${prod.slug}`}
-                        className="block font-serif text-base font-semibold text-charcoal hover:text-champagne-dark transition-colors line-clamp-2 leading-snug"
+                        className="block font-serif text-xs sm:text-base font-semibold text-charcoal hover:text-champagne-dark transition-colors line-clamp-1 sm:line-clamp-2 leading-snug"
                       >
                         {prod.name}
                       </Link>
 
-                      <p className="text-[11px] text-charcoal/60 line-clamp-1 italic">
+                      <p className="text-[10px] sm:text-[11px] text-charcoal/60 line-clamp-1 italic hidden sm:block">
                         {prod.material || 'Gold-tone finish • Skin friendly'}
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-[#C9A66B]/15 flex items-center justify-between gap-3">
+                    <div className="pt-2 sm:pt-3 border-t border-[#C9A66B]/15 flex items-center justify-between gap-2">
                       <div>
-                        <div className="text-base font-bold text-charcoal">
+                        <div className="text-xs sm:text-base font-bold text-charcoal">
                           ₹{(prod.priceMinor / 100).toLocaleString('en-IN')}
                         </div>
                         {prod.mrpMinor && (
-                          <div className="text-xs text-charcoal/40 line-through">
+                          <div className="text-[10px] sm:text-xs text-charcoal/40 line-through">
                             ₹{(prod.mrpMinor / 100).toLocaleString('en-IN')}
                           </div>
                         )}
@@ -571,10 +596,23 @@ export default function MoonletHomePage() {
                       <button
                         type="button"
                         onClick={(e) => handleQuickAdd(prod, e)}
-                        className="px-4 py-2 rounded-full bg-charcoal hover:bg-champagne-dark text-ivory text-xs font-semibold tracking-wider transition-all flex items-center gap-1.5 shadow-xs"
+                        className={`px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-semibold tracking-wider transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
+                          isAdded
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-charcoal hover:bg-champagne-dark text-ivory'
+                        }`}
                       >
-                        <ShoppingBag className="h-3.5 w-3.5 text-champagne" />
-                        <span>Quick Add</span>
+                        {isAdded ? (
+                          <>
+                            <Check className="h-3.5 w-3.5 text-white" />
+                            <span className="hidden sm:inline">Added!</span>
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingBag className="h-3.5 w-3.5 text-champagne" />
+                            <span>Quick Add</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -636,57 +674,70 @@ export default function MoonletHomePage() {
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filteredArrivals.map((prod) => (
-            <div
-              key={prod.id}
-              className="group bg-white rounded-2xl border border-[#C9A66B]/20 overflow-hidden shadow-subtle hover:shadow-luxury transition-all duration-300 flex flex-col justify-between"
-            >
-              <div className="relative aspect-square overflow-hidden bg-ivory">
-                <Link href={`/products/${prod.slug}`}>
-                  <img
-                    src={prod.imageUrl}
-                    alt={prod.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </Link>
-                <button
-                  type="button"
-                  onClick={(e) => toggleWishlist(prod.id, e)}
-                  aria-label="Wishlist"
-                  className="absolute top-3 right-3 p-2 rounded-full bg-white/90 text-charcoal hover:text-rose transition-colors"
-                >
-                  <Heart className={`h-4 w-4 ${wishlist[prod.id] ? 'fill-rose text-rose' : ''}`} />
-                </button>
-              </div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
+          {filteredArrivals.map((prod) => {
+            const isWish = isInWishlist(prod.id);
+            const isAdded = !!quickAddedIds[prod.id];
 
-              <div className="p-4 space-y-3">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-champagne-dark">{prod.category}</span>
-                  <Link
-                    href={`/products/${prod.slug}`}
-                    className="block font-serif text-sm font-semibold text-charcoal hover:text-champagne-dark transition-colors line-clamp-1 mt-0.5"
-                  >
-                    {prod.name}
+            return (
+              <div
+                key={prod.id}
+                className="group bg-white rounded-2xl border border-[#C9A66B]/20 overflow-hidden shadow-subtle hover:shadow-luxury transition-all duration-300 flex flex-col justify-between"
+              >
+                <div className="relative aspect-square overflow-hidden bg-ivory">
+                  <Link href={`/products/${prod.slug}`}>
+                    <img
+                      src={prod.imageUrl}
+                      alt={prod.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                   </Link>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-[#C9A66B]/15">
-                  <span className="text-sm font-bold text-charcoal">
-                    ₹{(prod.priceMinor / 100).toLocaleString('en-IN')}
-                  </span>
                   <button
                     type="button"
-                    onClick={(e) => handleQuickAdd(prod, e)}
-                    className="p-2 rounded-full bg-charcoal hover:bg-champagne-dark text-ivory transition-colors"
-                    title="Add to Cart"
+                    onClick={(e) => handleToggleWishlist(prod, e)}
+                    aria-label="Wishlist"
+                    className="absolute top-2.5 right-2.5 p-1.5 sm:p-2 rounded-full bg-white/90 text-charcoal hover:text-rose transition-colors cursor-pointer"
                   >
-                    <ShoppingBag className="h-3.5 w-3.5 text-champagne" />
+                    <Heart className={`h-4 w-4 ${isWish ? 'fill-rose text-rose' : ''}`} />
                   </button>
                 </div>
+
+                <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+                  <div>
+                    <span className="text-[9px] sm:text-[10px] uppercase font-bold text-champagne-dark">{prod.category}</span>
+                    <Link
+                      href={`/products/${prod.slug}`}
+                      className="block font-serif text-xs sm:text-sm font-semibold text-charcoal hover:text-champagne-dark transition-colors line-clamp-1 mt-0.5"
+                    >
+                      {prod.name}
+                    </Link>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-[#C9A66B]/15">
+                    <span className="text-xs sm:text-sm font-bold text-charcoal">
+                      ₹{(prod.priceMinor / 100).toLocaleString('en-IN')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => handleQuickAdd(prod, e)}
+                      className={`p-2 rounded-full transition-colors cursor-pointer ${
+                        isAdded
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-charcoal hover:bg-champagne-dark text-ivory'
+                      }`}
+                      title="Add to Cart"
+                    >
+                      {isAdded ? (
+                        <Check className="h-3.5 w-3.5 text-white" />
+                      ) : (
+                        <ShoppingBag className="h-3.5 w-3.5 text-champagne" />
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

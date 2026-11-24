@@ -23,6 +23,7 @@ import {
   PackageCheck,
 } from 'lucide-react';
 import { useCartStore } from '../../../store/cart';
+import { useWishlistStore } from '../../../store/wishlist';
 import {
   MorphingDialog,
   MorphingDialogTrigger,
@@ -46,13 +47,13 @@ export default function ProductDetailPage({
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
   const openCart = useCartStore((s) => s.openCart);
+  const { toggleItem, isInWishlist } = useWishlistStore();
 
   const [productData, setProductData] = useState<any>(null);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [selectedFinish, setSelectedFinish] = useState('18k Champagne Gold');
   const [selectedSize, setSelectedSize] = useState('Standard (Adjustable)');
   const [activeTab, setActiveTab] = useState<'DETAILS' | 'SHIPPING' | 'CARE' | 'REVIEWS'>('DETAILS');
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [addedToast, setAddedToast] = useState(false);
 
   // Pincode checker state
@@ -154,10 +155,9 @@ export default function ProductDetailPage({
       imageUrl: galleryImages[activeImageIdx] || galleryImages[0],
       priceMinor: product.priceMinor,
       availableStock: product.availableStock || 20,
-    });
+    }, 1, false);
     setAddedToast(true);
     setTimeout(() => setAddedToast(false), 3000);
-    openCart();
   };
 
   const handleBuyNow = () => {
@@ -169,8 +169,28 @@ export default function ProductDetailPage({
       imageUrl: galleryImages[activeImageIdx] || galleryImages[0],
       priceMinor: product.priceMinor,
       availableStock: product.availableStock || 20,
-    });
+    }, 1, false);
     router.push('/checkout');
+  };
+
+  const handleToggleWishlist = () => {
+    if (!product) return;
+    toggleItem({
+      id: product.id,
+      slug: product.slug,
+      name: product.name,
+      category: product.category,
+      finish: selectedFinish,
+      material: product.material || '18k Gold-Plated Finish',
+      brand: product.brand || 'Moonlet',
+      priceMinor: product.priceMinor,
+      mrpMinor: product.mrpMinor || Math.round(product.priceMinor * 1.45),
+      imageUrl: galleryImages[0] || product.imageUrl,
+      rating: product.rating || 4.9,
+      reviewsCount: product.reviewsCount || 48,
+      variantId: product.variantId || `var-${product.id}`,
+      inStock: product.inStock !== false,
+    });
   };
 
   const handleCheckPincode = (e: React.FormEvent) => {
@@ -261,11 +281,12 @@ export default function ProductDetailPage({
               )}
 
               <button
-                onClick={() => setIsWishlisted(!isWishlisted)}
+                type="button"
+                onClick={handleToggleWishlist}
                 className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-xs rounded-full shadow-xs text-charcoal/70 hover:text-rose hover:scale-110 transition-all z-20 cursor-pointer"
                 aria-label="Save to Wishlist"
               >
-                <Heart className={`h-5 w-5 ${isWishlisted ? 'fill-rose text-rose' : ''}`} />
+                <Heart className={`h-5 w-5 ${isInWishlist(product.id) ? 'fill-rose text-rose' : ''}`} />
               </button>
             </div>
 
