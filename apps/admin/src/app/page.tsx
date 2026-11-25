@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Copy,
   MoreHorizontal,
   Maximize2,
@@ -26,7 +27,11 @@ import {
   UploadCloud,
   Edit2,
   Trash2,
+  User,
+  Shield,
+  LogOut,
 } from 'lucide-react';
+import { useStaffAuth, STAFF_PRESETS, StaffRole } from '../context/StaffAuthContext';
 
 interface OrderItem {
   id: string;
@@ -121,10 +126,19 @@ const DASHBOARD_ORDERS: OrderItem[] = [
 ];
 
 export default function AdminDashboardPage() {
+  const { currentStaff, switchRole, logout } = useStaffAuth();
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'orders'>('products');
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  // Pagination States
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState(8);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPageSize, setOrdersPageSize] = useState(5);
 
   // Add Product Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -242,6 +256,27 @@ export default function AdminDashboardPage() {
     0
   );
 
+  // Pagination calculations
+  const totalProducts = products.length;
+  const totalProductPages = Math.max(1, Math.ceil(totalProducts / productPageSize));
+  const paginatedProducts = products.slice(
+    (productPage - 1) * productPageSize,
+    productPage * productPageSize
+  );
+
+  const totalOrders = DASHBOARD_ORDERS.length;
+  const totalOrderPages = Math.max(1, Math.ceil(totalOrders / ordersPageSize));
+  const paginatedOrders = DASHBOARD_ORDERS.slice(
+    (ordersPage - 1) * ordersPageSize,
+    ordersPage * ordersPageSize
+  );
+
+  useEffect(() => {
+    if (productPage > totalProductPages) {
+      setProductPage(Math.max(1, totalProductPages));
+    }
+  }, [productPage, totalProductPages]);
+
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formSku.trim()) return;
@@ -316,9 +351,9 @@ export default function AdminDashboardPage() {
       {/* Main Center Area */}
       <div className="flex-1 min-w-0 p-6 lg:p-8 space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 Dashboard
               </h1>
@@ -332,7 +367,104 @@ export default function AdminDashboardPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Landing Page Profile Badge & Quick Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+                className="flex items-center gap-2.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 rounded-xl border border-slate-200 shadow-xs transition-all text-left cursor-pointer"
+              >
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                    {currentStaff.name.split(' ').map((n) => n[0]).join('')}
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full ring-2 ring-white" />
+                </div>
+                <div className="text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-slate-900 truncate max-w-[130px]">
+                      {currentStaff.name}
+                    </span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      {currentStaff.roleLabel}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 truncate max-w-[170px]">{currentStaff.email}</p>
+                </div>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${isProfileMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Profile Dropdown */}
+              {isProfileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-3 space-y-2 text-slate-800">
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                        {currentStaff.name.split(' ').map((n) => n[0]).join('')}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">{currentStaff.name}</p>
+                        <p className="text-[11px] text-slate-500 truncate">{currentStaff.email}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">Security Clearance:</span>
+                      <span className="font-bold text-blue-700">{currentStaff.roleLabel}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                      Switch Active Role
+                    </span>
+                    {(Object.keys(STAFF_PRESETS) as StaffRole[]).map((roleKey) => {
+                      const preset = STAFF_PRESETS[roleKey];
+                      const isSelected = currentStaff.role === roleKey;
+                      return (
+                        <button
+                          key={roleKey}
+                          type="button"
+                          onClick={() => {
+                            switchRole(roleKey);
+                            setIsProfileMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-50 text-blue-800 font-bold border border-blue-200'
+                              : 'text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className="truncate">{preset.roleLabel}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <Link
+                      href="/staff"
+                      onClick={() => setIsProfileMenuOpen(false)}
+                      className="font-semibold text-slate-600 hover:text-slate-900"
+                    >
+                      Staff Directory →
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProfileMenuOpen(false);
+                        logout();
+                      }}
+                      className="font-semibold text-rose-600 hover:text-rose-700 cursor-pointer"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <Link
               href="/inventory"
               className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
@@ -342,7 +474,7 @@ export default function AdminDashboardPage() {
             </Link>
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-md transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-xl shadow-md transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="h-4 w-4" />
               <span>+ Add Product</span>
@@ -453,153 +585,303 @@ export default function AdminDashboardPage() {
 
           {/* Tab 1: Live Products Catalog Table */}
           {activeTab === 'products' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#fcfdfe] text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100">
-                  <tr>
-                    <th className="py-3 px-4">Product</th>
-                    <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4">SKU</th>
-                    <th className="py-3 px-4">Stock</th>
-                    <th className="py-3 px-4">Price</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {products.map((prod) => {
-                    const thumb =
-                      prod.imageUrl ||
-                      (prod.images && prod.images[0]?.url) ||
-                      'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100';
-                    const displayPrice = `$${((prod.priceMinor || 0) / 100).toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                    })}`;
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#fcfdfe] text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100">
+                    <tr>
+                      <th className="py-3 px-4">Product</th>
+                      <th className="py-3 px-4">Category</th>
+                      <th className="py-3 px-4">SKU</th>
+                      <th className="py-3 px-4">Stock</th>
+                      <th className="py-3 px-4">Price</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {paginatedProducts.map((prod) => {
+                      const thumb =
+                        prod.imageUrl ||
+                        (prod.images && prod.images[0]?.url) ||
+                        'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100';
+                      const displayPrice = `$${((prod.priceMinor || 0) / 100).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                      })}`;
 
-                    return (
-                      <tr key={prod.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
-                              <img src={thumb} alt={prod.name} className="w-full h-full object-cover" />
+                      return (
+                        <tr key={prod.id} className="hover:bg-slate-50/70 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0">
+                                <img src={thumb} alt={prod.name} className="w-full h-full object-cover" />
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-900 block">{prod.name}</span>
+                                <span className="text-[11px] text-slate-400">{prod.brand || 'Apex Industrial'}</span>
+                              </div>
                             </div>
-                            <div>
-                              <span className="font-bold text-slate-900 block">{prod.name}</span>
-                              <span className="text-[11px] text-slate-400">{prod.brand || 'Apex Industrial'}</span>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600">{prod.category}</td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-800 text-[11px]">
+                            <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
+                              {prod.sku}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-bold text-slate-900">{prod.quantityOnHand || 0}</span>
+                            <span className="text-[11px] text-slate-400 ml-1">units</span>
+                          </td>
+                          <td className="py-3.5 px-4 font-bold text-slate-900">{displayPrice}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              ✓ {prod.status || 'Active'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <a
+                                href={`http://localhost:3000/products/${prod.slug || prod.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
+                                title="Store Preview"
+                              >
+                                <span>Preview</span>
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => openEditModal(prod)}
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Product"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProduct(prod)}
+                                className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Delete Product"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-600">{prod.category}</td>
-                        <td className="py-3.5 px-4 font-mono font-bold text-slate-800 text-[11px]">
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">
-                            {prod.sku}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-bold text-slate-900">{prod.quantityOnHand || 0}</span>
-                          <span className="text-[11px] text-slate-400 ml-1">units</span>
-                        </td>
-                        <td className="py-3.5 px-4 font-bold text-slate-900">{displayPrice}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            ✓ {prod.status || 'Active'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <a
-                              href={`http://localhost:3000/products/${prod.slug || prod.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
-                              title="Store Preview"
-                            >
-                              <span>Preview</span>
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                            <button
-                              type="button"
-                              onClick={() => openEditModal(prod)}
-                              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                              title="Edit Product"
-                            >
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteProduct(prod)}
-                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                              title="Delete Product"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Products Pagination Bar */}
+              <div className="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>
+                    Showing{' '}
+                    <span className="font-bold text-slate-900">
+                      {totalProducts === 0 ? 0 : (productPage - 1) * productPageSize + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-bold text-slate-900">
+                      {Math.min(productPage * productPageSize, totalProducts)}
+                    </span>{' '}
+                    of <span className="font-bold text-slate-900">{totalProducts}</span> products
+                  </span>
+                  <span className="text-slate-300">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-slate-400">Per page:</span>
+                    <select
+                      value={productPageSize}
+                      onChange={(e) => {
+                        setProductPageSize(Number(e.target.value));
+                        setProductPage(1);
+                      }}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer"
+                    >
+                      <option value={5}>5</option>
+                      <option value={8}>8</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                    disabled={productPage === 1}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalProductPages }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setProductPage(pageNum)}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          productPage === pageNum
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setProductPage((p) => Math.min(totalProductPages, p + 1))}
+                    disabled={productPage === totalProductPages}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Tab 2: Recent Orders Table */}
           {activeTab === 'orders' && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#fcfdfe] text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100">
-                  <tr>
-                    <th className="py-3 px-4">Order</th>
-                    <th className="py-3 px-4">Customer</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Product</th>
-                    <th className="py-3 px-4">Total</th>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4 text-right"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {DASHBOARD_ORDERS.map((ord) => (
-                    <tr
-                      key={ord.id}
-                      onClick={() => setSelectedOrder(ord)}
-                      className="hover:bg-slate-50/60 transition-colors cursor-pointer"
-                    >
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{ord.orderNumber}</td>
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
-                            {ord.customerInitials}
-                          </div>
-                          <span className="font-semibold text-slate-900">{ord.customer}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500">{ord.type}</td>
-                      <td className="py-3.5 px-4">
-                        {ord.status === 'PAID' && (
-                          <span className="font-bold text-emerald-600">✓ Paid</span>
-                        )}
-                        {ord.status === 'REFUNDED' && (
-                          <span className="font-bold text-amber-600">↩ Refunded</span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
-                          <img src={ord.productThumb} alt="Product" className="w-full h-full object-cover" />
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">{ord.total}</td>
-                      <td className="py-3.5 px-4 text-slate-500 text-[11px]">{ord.date}</td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button type="button" className="text-slate-400 hover:text-slate-600 p-1">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#fcfdfe] text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100">
+                    <tr>
+                      <th className="py-3 px-4">Order</th>
+                      <th className="py-3 px-4">Customer</th>
+                      <th className="py-3 px-4">Type</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4">Product</th>
+                      <th className="py-3 px-4">Total</th>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4 text-right"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {paginatedOrders.map((ord) => (
+                      <tr
+                        key={ord.id}
+                        onClick={() => setSelectedOrder(ord)}
+                        className="hover:bg-slate-50/60 transition-colors cursor-pointer"
+                      >
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900">{ord.orderNumber}</td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                              {ord.customerInitials}
+                            </div>
+                            <span className="font-semibold text-slate-900">{ord.customer}</span>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500">{ord.type}</td>
+                        <td className="py-3.5 px-4">
+                          {ord.status === 'PAID' && (
+                            <span className="font-bold text-emerald-600">✓ Paid</span>
+                          )}
+                          {ord.status === 'REFUNDED' && (
+                            <span className="font-bold text-amber-600">↩ Refunded</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="w-8 h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200">
+                            <img src={ord.productThumb} alt="Product" className="w-full h-full object-cover" />
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">{ord.total}</td>
+                        <td className="py-3.5 px-4 text-slate-500 text-[11px]">{ord.date}</td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button type="button" className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Orders Pagination Bar */}
+              <div className="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>
+                    Showing{' '}
+                    <span className="font-bold text-slate-900">
+                      {totalOrders === 0 ? 0 : (ordersPage - 1) * ordersPageSize + 1}
+                    </span>{' '}
+                    to{' '}
+                    <span className="font-bold text-slate-900">
+                      {Math.min(ordersPage * ordersPageSize, totalOrders)}
+                    </span>{' '}
+                    of <span className="font-bold text-slate-900">{totalOrders}</span> orders
+                  </span>
+                  <span className="text-slate-300">|</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-slate-400">Per page:</span>
+                    <select
+                      value={ordersPageSize}
+                      onChange={(e) => {
+                        setOrdersPageSize(Number(e.target.value));
+                        setOrdersPage(1);
+                      }}
+                      className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setOrdersPage((p) => Math.max(1, p - 1))}
+                    disabled={ordersPage === 1}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalOrderPages }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setOrdersPage(pageNum)}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          ordersPage === pageNum
+                            ? 'bg-slate-900 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setOrdersPage((p) => Math.min(totalOrderPages, p + 1))}
+                    disabled={ordersPage === totalOrderPages}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

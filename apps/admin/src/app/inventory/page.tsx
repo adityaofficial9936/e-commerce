@@ -20,6 +20,8 @@ import {
   Copy,
   MoreHorizontal,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   AlertTriangle,
 } from 'lucide-react';
 import { useStaffAuth } from '../../context/StaffAuthContext';
@@ -164,6 +166,10 @@ export default function InventoryPage() {
   const [comparePrior, setComparePrior] = useState(false);
   const [search, setSearch] = useState('');
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   // Fetch persisted products from shared catalog on mount
   useEffect(() => {
     fetch('/api/products')
@@ -297,6 +303,17 @@ export default function InventoryPage() {
     }
     return true;
   });
+
+  // Pagination calculations
+  const totalFiltered = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  const paginatedItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [currentPage, totalPages]);
 
   const handleImageFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -524,7 +541,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {filteredItems.map((prod) => {
+                {paginatedItems.map((prod) => {
                   const isSelected = selectedProduct?.id === prod.id;
                   const thumb = prod.images[0]?.url;
 
@@ -592,6 +609,79 @@ export default function InventoryPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Inventory Pagination Bar */}
+          <div className="p-4 border-t border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>
+                Showing{' '}
+                <span className="font-bold text-slate-900">
+                  {totalFiltered === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+                </span>{' '}
+                to{' '}
+                <span className="font-bold text-slate-900">
+                  {Math.min(currentPage * pageSize, totalFiltered)}
+                </span>{' '}
+                of <span className="font-bold text-slate-900">{totalFiltered}</span> items
+              </span>
+              <span className="text-slate-300">|</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Prev</span>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      currentPage === pageNum
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100 border border-slate-200'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>

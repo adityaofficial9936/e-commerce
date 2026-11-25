@@ -16,10 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen flex bg-slate-950 text-slate-100 font-sans antialiased">
+      <body className="h-screen overflow-hidden flex bg-slate-950 text-slate-100 font-sans antialiased">
         <StaffAuthProvider>
           <AdminSidebar />
-          <div className="flex-1 min-w-0 bg-slate-100 text-slate-900 overflow-y-auto">
+          <div className="flex-1 min-w-0 bg-slate-100 text-slate-900 h-screen overflow-y-auto">
             {children}
           </div>
         </StaffAuthProvider>

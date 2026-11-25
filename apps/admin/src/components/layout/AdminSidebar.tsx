@@ -48,7 +48,7 @@ export function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-60 bg-[#0c101d] border-r border-[#1a2236] flex flex-col shrink-0 min-h-screen text-slate-300 select-none">
+    <aside className="w-60 bg-[#0c101d] border-r border-[#1a2236] flex flex-col shrink-0 h-screen sticky top-0 text-slate-300 select-none">
       {/* Top Header: Logo & Collapse icon */}
       <div className="h-16 flex items-center justify-between px-5 border-b border-[#1a2236]/80">
         <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export function AdminSidebar() {
       </div>
 
       {/* Main Navigation Links */}
-      <div className="flex-1 px-3 py-3 space-y-5 overflow-y-auto">
+      <div className="flex-1 px-3 py-3 space-y-5 overflow-y-auto min-h-0">
         <nav className="space-y-1">
           {MAIN_NAV.map((item) => {
             const Icon = item.icon;
@@ -151,7 +151,7 @@ export function AdminSidebar() {
       </div>
 
       {/* Profile & Role Switcher Footer */}
-      <div className="p-3 border-t border-[#1a2236] bg-[#090d18] relative">
+      <div className="p-3 border-t border-[#1a2236] bg-[#090d18] relative shrink-0">
         <button
           type="button"
           onClick={() => setRoleSwitcherOpen(!roleSwitcherOpen)}
